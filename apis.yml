@@ -1,0 +1,98 @@
+name: ClosedLoop AI
+description: >-
+  Product-intelligence platform that turns customer conversations and feedback (Gong, Fireflies, Slack, Zendesk,
+  Intercom, Salesforce, HubSpot, surveys, product usage; 40+ integrations) into structured, source-traceable product
+  insights, themes, buildable features, and prioritized roadmap decisions. Exposes a read-only /v1 REST API, a hosted
+  MCP server, an llms.txt index, and published Claude Code skills.
+url: https://raw.githubusercontent.com/api-evangelist/closedloop-ai-api/refs/heads/main/apis.yml
+created: '2026-08-30'
+modified: '2026-08-30'
+specificationVersion: '0.21'
+tags:
+  - product intelligence
+  - customer feedback
+  - voice-of-customer
+  - product management
+  - agentic AI
+  - MCP
+  - SaaS analytics
+apis:
+  - name: ClosedLoop AI REST API
+    description: >-
+      Read-only /v1 REST API, team- and region-scoped, authenticated via X-API-Key. Exposes insights, products, themes,
+      features, coverage/evidence, customers, customer context, competitors, trends, facets, integrations,
+      usage/credits, and a public health check. Feedback is ingested via integrations, not written through this API.
+    humanURL: https://docs.closedloop.sh/api-reference/introduction
+    baseURL: https://api.closedloop.sh/v1
+    tags:
+      - product intelligence
+      - customer feedback
+      - voice-of-customer
+      - product management
+      - agentic AI
+      - MCP
+      - SaaS analytics
+    properties:
+      - type: OpenAPI
+        url: https://closedloop.sh/docs/api-reference/openapi.yaml
+      - type: Documentation
+        url: https://docs.closedloop.sh/api-reference/introduction
+      - type: Documentation
+        url: https://closedloop.sh/docs/api-reference/conventions
+      - type: LLMsTxt
+        url: https://closedloop.sh/docs/llms.txt
+  - name: ClosedLoop AI MCP Server
+    description: >-
+      Hosted, first-class MCP server over HTTP with OAuth auth (interactive auto-registration or client_credentials for
+      M2M). Ships MCP tools (query insights, context, customers, themes, competitors) and a 'prd' prompt/slash command.
+      Works with Claude Code, Claude Desktop/web/Cowork, Cursor, LiteLLM, or any MCP-compatible client. US endpoint
+      https://mcp.closedloop.sh, EU endpoint https://eu.mcp.closedloop.sh.
+    humanURL: https://closedloop.sh/docs/mcp-server/overview
+    baseURL: https://mcp.closedloop.sh
+    tags:
+      - product intelligence
+      - customer feedback
+      - voice-of-customer
+      - product management
+      - agentic AI
+      - MCP
+      - SaaS analytics
+    properties:
+      - type: MCPServer
+        url: https://mcp.closedloop.sh
+      - type: MCPServer
+        url: https://eu.mcp.closedloop.sh
+      - type: Documentation
+        url: https://closedloop.sh/docs/mcp-server/overview
+      - type: Documentation
+        url: https://closedloop.sh/docs/mcp-server/tools
+      - type: Documentation
+        url: https://closedloop.sh/docs/account/mcp-service-clients
+  - name: ClosedLoop AI Claude Code Skills
+    description: >-
+      Set of ~25 pre-built Claude Code skills distributed as the 'closedloop-skills' plugin via the Anthropic community
+      marketplace, grouped by team (product/eng/sales/marketing/CS/leadership). Examples: Deep Dive, PM Prep, Scope
+      Guard, Synthetic Customer, Competitor Gap, Bug Blast Radius, Weekly Brief, Ship Notify, Case Study Scout.
+    humanURL: https://closedloop.sh/docs/skills/overview
+    baseURL: https://closedloop.sh/docs/skills/overview
+    tags:
+      - product intelligence
+      - customer feedback
+      - voice-of-customer
+      - product management
+      - agentic AI
+      - MCP
+      - SaaS analytics
+    properties:
+      - type: AgentSkill
+        url: https://closedloop.sh/docs/skills/overview
+      - type: Documentation
+        url: https://closedloop.sh/docs/skills/overview
+maintainers:
+  - FN: ClosedLoop AI
+    url: https://closedloop.sh
+generated:
+  by: apis.io/add
+  model: claude-opus-4-8
+  confidence: 93
+  at: '2026-08-30T13:57:07.826Z'
