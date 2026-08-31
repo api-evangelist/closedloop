@@ -1,0 +1,234 @@
+generated: '2026-08-30'
+method: searched
+source: https://closedloop.sh/docs/api-reference/conventions
+source_status: 200
+secondary_sources:
+- https://closedloop.sh/docs/api-reference/introduction
+- https://closedloop.sh/docs/account/api-keys
+- openapi/closedloop-public-api-openapi.yaml
+api_shape:
+  read_only: true
+  read_only_detail: >-
+    Every one of the 20 published /v1 operations is a GET. Nothing is mutated through this API.
+    Feedback enters the platform through connected integrations and provisioned inbound webhooks,
+    not through a caller-facing write endpoint. This single fact governs the idempotency, dry-run
+    and reversibility sections below.
+  regions:
+  - id: us
+    base_url: https://api.closedloop.sh/v1
+  - id: eu
+    base_url: https://eu.api.closedloop.sh/v1
+  region_binding: >-
+    Each team lives in exactly one region and each API key is scoped to it. An EU key only works
+    against the EU host. There is no cross-region routing and no fallback -- a key used against the
+    wrong host returns 401.
+authentication:
+  style: api-key-header
+  header: X-API-Key
+  header_alias: apikey
+  scheme_name: ApiKeyAuth
+  scope: team
+  scope_detail: A key belongs to one team; every response is automatically limited to that team's
+    data. A key can never read another workspace.
+  key_prefix: clai_live_
+  key_prefix_source: published curl examples in the API reference
+  storage: keys are hashed with SHA-256 before storage; the provider cannot retrieve a key after
+    creation
+  display: shown once at creation only
+  revocation: immediate -- revoked keys return 401 at once
+  rotation_guidance: rotate periodically, especially after team-member departures
+  client_side: forbidden -- keys are for servers, scheduled jobs and ETL pipelines
+  mcp_note: >-
+    REST API keys DO NOT work with MCP. The MCP surface uses OAuth 2.1 with its own service clients.
+    The two credential systems are separate.
+  webhook_note: >-
+    Webhook signing secrets are a THIRD, separate credential (the "Webhook Key"), generated on the
+    same Settings > API Keys page. An x-api-key header does not authenticate an inbound webhook.
+  cross_ref: authentication/closedloop-authentication.yml
+idempotency:
+  supported: na
+  reason: >-
+    Not applicable -- the API is read-only. Every operation is a GET and is therefore naturally
+    idempotent; there is no write surface for an Idempotency-Key to protect. No idempotency header
+    is documented and none is needed.
+  header: null
+  retention: null
+pagination:
+  styles:
+  - name: offset
+    applies_to: list endpoints
+    params:
+    - name: limit
+      default: 50
+      max: 200
+    - name: offset
+      default: 0
+    response_fields:
+      envelope: data
+      meta: pagination
+      meta_fields: [total, limit, offset]
+    total_semantics: >-
+      `total` is the FULL-SET count of matching records, not the size of the page. Page by
+      increasing offset until you have read `total` records.
+  - name: cursor-watermark
+    applies_to: GET /insights (incremental export)
+    params:
+    - name: updated_since
+      note: first request only -- use instead of offset
+    - name: cursor
+      note: subsequent requests -- opaque
+    - name: limit
+    response_fields:
+      envelope: data
+      meta: pagination
+      meta_fields: [limit, has_more, next_cursor, sync_until]
+    ordering: updated_at, then id
+    window: updated_since < updated_at <= sync_until (fixed upper watermark)
+    checkpointing: >-
+      Save sync_until as the next checkpoint ONLY after the final page returns has_more: false.
+      Upsert rows by immutable id; replaying the last committed window gives at-least-once recovery
+      after a failed run.
+    no_total: >-
+      Cursor exports deliberately return no `total` -- the fixed window plus has_more determine
+      completion.
+    cursor_opacity: >-
+      Cursors are signed and bound to team, API key, filters and watermark. If the key is rotated
+      mid-run, restart from the last committed sync_until with the new key.
+    caveats:
+    - >-
+      An association-only change (product, product-feature or product-area) may NOT advance the
+      insight's updated_at, so it may not appear until the insight itself changes.
+    - Deletions are NOT emitted as tombstones. A consumer cannot learn about a removal from the
+      export stream.
+filtering:
+  combination: AND across multiple filters
+  free_text: q -- free-text over titles and content, on most list endpoints
+  date_range:
+    params: [date_from, date_to]
+    format: ISO 8601 date
+    inclusivity: inclusive on both ends
+  product_scope_params: [product_id, product_feature_id, product_area_id, feature_area_id]
+  round_trippable: >-
+    Insight responses expose the same ids the filters accept (products[].id, product_features[].id,
+    product_area_id, feature_area_id), so filters are round-trippable. Call /products, /features and
+    /areas to discover current scope ids, and /facets for categories, severities and sources.
+  id_kind_warning: >-
+    product_feature_id and feature_area_id name two DIFFERENT kinds of id and are never
+    interchangeable. A product feature is a buildable item from /features; a feature area is the
+    subject area an insight is filed under, listed by /areas.
+  strictness: >-
+    Unsupported query parameters are REJECTED with 400 UNSUPPORTED_QUERY_PARAMETER rather than
+    ignored, per endpoint. See errors/closedloop-problem-types.yml.
+  completeness_caveat: >-
+    Product filtering returns only insights with a RECORDED association. Some insights stay
+    unassigned when no reliable automatic match is found, so a filtered result may omit relevant
+    records.
+search:
+  modes:
+  - name: lexical
+    default: true
+    semantics: the complete q value must occur as one case-insensitive substring in the title or
+      description
+  - name: semantic
+    param: search_mode=semantic
+    applies_to: [GET /themes, GET /features]
+    tuning:
+      param: min_similarity
+      default: 0.5
+      range: 0.30-1.00
+    q_max_length: 500
+    ordering: similarity descending, then immutable theme id -- semantic relevance OVERRIDES sort
+    failure: 503 SEMANTIC_SEARCH_UNAVAILABLE by default
+    fallback:
+      param: allow_fallback=true
+      observable: response returns "search_mode":"lexical" and "min_similarity":null so a client can
+        detect the downgrade
+field_expansion:
+  supported: false
+  detail: No expand / include / fields sparse-fieldset mechanism is documented. Detail endpoints
+    (/insights/{id}, /themes/{id}, /features/{id}, /customers/{id}) return the richer shape instead.
+metadata:
+  supported: false
+  detail: No customer-writable metadata bag -- consistent with a read-only API.
+request_id_tracing:
+  supported: false
+  detail: >-
+    NOT DOCUMENTED. No request-id or correlation-id response header is described in the API
+    reference and none appears in the OpenAPI response definitions. An agent has no documented
+    handle to quote back to support for a specific failed call.
+versioning:
+  scheme: uri-path
+  current: v1
+  detail: Version is carried in the base URL path (/v1). No version header, no date-based pinning,
+    no version negotiation is documented.
+  spec_version: 1.8.0
+  spec_version_note: info.version in the published OpenAPI; distinct from the /v1 URI version.
+  cross_ref: lifecycle/closedloop-lifecycle.yml
+stable_ids:
+  immutable: true
+  detail: >-
+    Insight and theme ids are immutable UUIDs and are NEVER reassigned or recycled to another
+    resource. If a resource is removed, a later lookup returns 404 -- the id is not reused. Names,
+    descriptions, theme membership and aggregate counts can still evolve as more feedback is
+    processed.
+  merge_semantics: >-
+    A merged theme returns 410 THEME_RETIRED with the FINAL surviving replacement_theme_id, so a
+    caller never walks a chain. GET /themes?include_retired=true lists current and merged together.
+error_envelope:
+  format: vendor-json
+  rfc9457: false
+  shape: '{"error": string, "code": string, "hint": string?}'
+  branch_on: code
+  cross_ref: errors/closedloop-problem-types.yml
+rate_limit_signaling:
+  headers: []
+  headers_note: No X-RateLimit-* or RateLimit-* headers are documented or present in the spec.
+  retry_after: documented on 429 and on the three 503 backoff codes
+  cross_ref: rate-limits/closedloop-rate-limits.yml
+timestamps:
+  format: ISO 8601, UTC
+  example: '2026-05-14T10:30:00Z'
+  semantics:
+  - field: source_date
+    meaning: when the feedback occurred
+  - field: updated_at
+    meaning: the incremental-export cursor timestamp
+  date_filters: date_from / date_to accept ISO 8601 dates, inclusive on both ends
+cross_resource_joins:
+  detail: >-
+    Insight and context records carry the SAME resolved customer_id, so an insight can be lined up
+    with the strategic context (churn, competitor, satisfaction) for the same customer. Filter
+    either list by customer_id.
+dry_run_mode:
+  supported: na
+  reason: Not applicable -- read-only API. There is no action to rehearse.
+reversibility:
+  applicable: false
+  grade: na
+  write_surface: none
+  reason: >-
+    NOT APPLICABLE, and that is the honest answer rather than a zero. All 20 published /v1
+    operations are GETs; the API cannot create, modify or delete anything, so there is no action for
+    an agent to take back. No cancel, refund, void, reverse, undo, rollback or restore operation
+    exists in the contract because nothing in the contract commits state.
+  write_surfaces_elsewhere:
+  - surface: inbound webhook ingestion
+    direction: inbound-to-provider
+    caller_initiated: false
+    reversible: unknown
+    detail: >-
+      Provisioned webhooks let a SOURCE PLATFORM push events into ClosedLoop AI. That is the
+      provider receiving data, not an API caller writing through this contract, and the docs state
+      no correction, retraction or delete path for an ingested payload. NOT recorded as a
+      reversibility window because the provider states none -- asserting one would be an invention.
+    docs: https://closedloop.sh/docs/integrations/webhooks
+  - surface: MCP tools
+    direction: caller-to-provider
+    reversible: na
+    detail: >-
+      All 12 documented MCP tools are reads (get_/search_). The MCP surface adds no write, so it
+      adds no reversal requirement either.
+  destructive_operations: []
+  note: >-
+    An agent given a ClosedLoop AI API key cannot take a destructive action with it. That is a real
+    safety property of this integration and is recorded here as such, not as a missing feature.

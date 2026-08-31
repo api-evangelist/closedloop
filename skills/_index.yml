@@ -1,0 +1,66 @@
+generated: '2026-08-30'
+provider: ClosedLoop AI
+slug: closedloop
+skills:
+- name: closedloopai
+  file: closedloop-closedloopai-published-skill.md
+  method: searched
+  source: https://closedloop.sh/docs/.well-known/agent-skills/closedloopai/skill.md
+  source_status: 200
+  authored_by: provider
+  description: >-
+    ClosedLoop AI's OWN published Agent Skill, saved verbatim. Referenced as skills[0].url by the
+    A2A agent card at https://docs.closedloop.sh/.well-known/agent-card.json. Covers the product
+    model (Insight, Context, Behavior, Theme, Watch), the REST and MCP access paths, and when an
+    agent should reach for the platform. This is a provider-published artifact -- do not edit it.
+- name: closedloop-incremental-insight-export
+  file: closedloop-incremental-insight-export.md
+  method: generated
+  authored_by: api-evangelist
+  operations: [listInsights, getInsight]
+  description: >-
+    Repeatable, resumable warehouse export using the fixed-watermark cursor, with correct
+    checkpointing and the two documented gaps (association-only changes, no deletion tombstones)
+    called out.
+- name: closedloop-theme-to-roadmap-evidence
+  file: closedloop-theme-to-roadmap-evidence.md
+  method: generated
+  authored_by: api-evangelist
+  operations: [listProducts, listAreas, getCoverage, listThemes, getTheme, listFeatures, getFeature,
+    listInsights, getInsight]
+  description: >-
+    Ranked Theme down to verbatim customer quotes and buildable features, gated on a /coverage check
+    so a thin scope is not mistaken for a real signal. Covers semantic-vs-lexical search, the 410
+    merge pointer, and the scoped-vs-stored count trap.
+- name: closedloop-competitive-and-churn-signals
+  file: closedloop-competitive-and-churn-signals.md
+  method: generated
+  authored_by: api-evangelist
+  operations: [listCompetitors, listCompetitorMentions, listContext, listCustomers, getCustomer,
+    listInsights, getInsight]
+  description: >-
+    Competitor pressure and churn risk tied to the named customer and the deal behind it, using the
+    shared customer_id join and the parent_id account family.
+provider_published_skills_plugin:
+  name: closedloop-skills
+  count_documented: ~25
+  docs: https://closedloop.sh/docs/skills/overview
+  distribution: Anthropic community plugin marketplace
+  install: "/plugin marketplace add anthropics/claude-plugins-community\n/plugin install closedloop-skills@claude-community"
+  requires: the ClosedLoop AI MCP server, connected and authorized
+  note: >-
+    NOT VENDORED HERE. These ~25 skills (Deep Dive, PM Prep, Scope Guard, Synthetic Customer,
+    Competitor Gap, Bug Blast Radius, Weekly Brief, Ship Notify, Case Study Scout and others) are
+    distributed as a Claude Code plugin, not as files served from a ClosedLoop AI URL, so there is
+    nothing to fetch verbatim. Each has a documentation page under
+    https://closedloop.sh/docs/skills/. They are grounded in MCP TOOLS, not in the REST API.
+  documented_skills: [deep-dive, pm-prep, scope-guard, synthetic-customer, competitor-gap,
+    product-ambassadors, product-ambassador-outreach, spec, bug-blast-radius, sales-playbook,
+    sales-proof, reference-customers, customer-proof, customer-proof-outreach, case-study-scout,
+    proof-permissions, weekly-brief, csm-prep, ship-notify, watch, send-feedback]
+grounding_note: >-
+  Every operationId in the generated skills above is either present in
+  openapi/closedloop-public-api-openapi.yaml or supplied by
+  overlays/closedloop-public-api-overlay.yaml, and each skill names which. Eleven of the twenty
+  published operations carry no operationId, so paths are given alongside ids wherever that is the
+  case. No operation, parameter, error code or field name in these skills was invented.

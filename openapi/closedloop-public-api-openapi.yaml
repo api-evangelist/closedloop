@@ -1,0 +1,1672 @@
+openapi: 3.0.3
+
+info:
+  title: ClosedLoop AI Public API
+  version: "1.8.0"
+  x-logo:
+    url: https://app.closedloop.sh/favicon.svg
+    altText: ClosedLoop AI
+  description: |
+    # ClosedLoop AI Public API
+
+    Programmatic access to your team's **product insights**, the structured intelligence
+    ClosedLoop AI extracts from customer conversations (Gong, Fireflies, Slack, …) and
+    structured feedback (surveys, webhooks).
+
+    Pull insights, themes, features, customer context and analytics into your own tools.
+
+    ## Two ways to integrate
+
+    | | **This REST API** | **MCP** (live today) |
+    |---|---|---|
+    | Best for | server-to-server, dashboards, ETL, scripts | AI assistants (Claude, Cursor, …), agents |
+    | Shape | resource endpoints, JSON | tool calls over the Model Context Protocol |
+    | Auth | `X-API-Key` header | OAuth |
+
+    Most agentic use cases are already covered by MCP. Reach for this REST API when you
+    want plain HTTP resources.
+
+    ## Base URLs (region-scoped)
+
+    Your API key belongs to a **team**, and each team lives in exactly one region. Use the
+    base URL for **your** region. A key issued in the EU only works against the EU host.
+
+    | Region | Base URL |
+    |---|---|
+    | United States | `https://api.closedloop.sh/v1` |
+    | European Union | `https://eu.api.closedloop.sh/v1` |
+
+    ## Authentication
+
+    Create a key in **Settings → API Keys** in the app, then send it on every request:
+
+    ```
+    X-API-Key: clai_live_xxxxxxxxxxxxxxxxxxxx
+    ```
+
+    Keys are **team-scoped**: every response is automatically limited to your team's data.
+    Never expose a key in client-side code.
+
+    ## Conventions
+
+    - **Read-only**: every v1 endpoint is a `GET`; nothing is mutated. Feedback is ingested
+      through your connected integrations, not this API.
+    - **Pagination**: list endpoints accept `limit` (default 50, max 200) and `offset`.
+      `/insights` also supports fixed-watermark cursor export with `updated_since`.
+    - **Errors**: non-2xx responses return a JSON `{ error, code, hint? }` body. User-safe
+      messages only; never raw internals.
+    - **Rate limits**: the public API has no general fixed per-key quota. Semantic theme
+      search uses implementation-defined protective rate and concurrency safeguards.
+      Clients must handle `429` and honor `Retry-After`; these safeguards are enforced
+      independently by API replica and are not a fleet-wide numeric quota.
+    - **Linking insights and context**: both carry the same resolved `customer_id`, so you
+      can line up an insight with the context (churn, competitor, satisfaction) for the same
+      customer. Filter either list by `customer_id`.
+    - **Time anchors**: timestamps are ISO 8601 (UTC).
+
+  contact:
+    name: ClosedLoop AI Support
+    email: support@closedloop.sh
+    url: https://closedloop.sh
+  license:
+    name: Proprietary (ClosedLoop Labs LLC)
+    url: https://closedloop.sh/terms
+
+servers:
+  - url: https://api.closedloop.sh/v1
+    description: United States (production)
+  - url: https://eu.api.closedloop.sh/v1
+    description: European Union (production)
+
+security:
+  - ApiKeyAuth: []
+
+tags:
+  - name: Insights
+    description: |
+      Individual **product insights**: structured, AI-processed feedback items
+      (pain point, severity, workaround, competitor gap, evidence).
+  - name: Products
+    description: The current product, product-area, and feature-area vocabulary for the team.
+  - name: Themes
+    description: |
+      **Themes**: top-level problem clusters of related insights, RIC-scored. The
+      "what should we build?" surface. Each theme rolls up one or more buildable features.
+  - name: Features
+    description: |
+      **Features**: the buildable, shippable children of a theme. Filter by `theme_id`.
+      Same theme → features hierarchy you see on the roadmap.
+  - name: Customers
+    description: The people and accounts who gave feedback, with CRM context.
+  - name: Context
+    description: |
+      **Customer context**, the strategic intelligence behind your customers: churn
+      reasons, competitive mentions, satisfaction, pricing perception and more, surfaced
+      from conversations. This is the `/context` surface in the app. Each record resolves
+      to a customer (`customer_id`), so it lines up with insights for the same customer.
+  - name: Competitors
+    description: |
+      Competitive pressure derived from your customers' own words. Competitors with a
+      **mention trend over time** (not a static total), and a searchable feed of the exact
+      mentions, each showing the customer behind it.
+  - name: Analytics
+    description: Trends, cohorts and facet counts over the full dataset.
+  - name: Integrations
+    description: Connected data sources for your team.
+  - name: Usage
+    description: Credit consumption and usage records for billing transparency.
+  - name: Meta
+    description: Service metadata.
+
+x-tagGroups:
+  - name: Prioritization
+    tags: [Insights, Products, Themes, Features]
+  - name: Customers & Context
+    tags: [Customers, Context, Competitors]
+  - name: Reporting
+    tags: [Analytics]
+  - name: Account
+    tags: [Integrations, Usage]
+  - name: Meta
+    tags: [Meta]
+
+paths:
+  /insights:
+    get:
+      operationId: listInsights
+      tags: [Insights]
+      summary: List / search insights
+      x-mint:
+        metadata:
+          description: "Search processed product insights by customer, severity, product scope, date, or text, with offset or fixed-watermark incremental pagination."
+      description: |
+        Search processed product insights. Filter by category, severity, customer,
+        product, product feature, product area, feature area, date range, or a
+        free-text query.
+
+        Offset pagination is the default. For a stable incremental export, start with
+        `updated_since`; then follow `next_cursor` using only `cursor` and optionally
+        `limit`. The fixed export window is `updated_since < updated_at <= sync_until`.
+
+        Product filtering returns insights with a recorded product association. Some
+        insights remain unassigned when ClosedLoop AI cannot determine a reliable
+        automatic match, so filtered results may not include every potentially relevant
+        insight. Responses expose the IDs accepted by all four product-scope filters:
+        `products[].id`, `product_features[].id`, `product_area_id`, and `feature_area_id`.
+      parameters:
+        - $ref: '#/components/parameters/Query'
+        - name: category
+          in: query
+          schema: { type: string, example: "bug" }
+          description: Feedback category (e.g. bug, feature request, usability).
+        - name: severity
+          in: query
+          schema: { type: string, enum: [critical, high, medium, low] }
+        - name: customer_id
+          in: query
+          schema: { type: string, format: uuid }
+          description: Filter to insights from one customer (same key as on context).
+        - $ref: '#/components/parameters/ProductId'
+        - $ref: '#/components/parameters/ProductFeatureId'
+        - $ref: '#/components/parameters/ProductAreaId'
+        - $ref: '#/components/parameters/FeatureAreaId'
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - name: updated_since
+          in: query
+          schema: { type: string, format: date-time }
+          example: "2026-05-01T00:00:00Z"
+          description: |
+            Start a fixed-watermark incremental export after this insight-row update
+            timestamp. Cannot be combined with `offset` or `cursor`.
+
+            Must be a timezone-qualified ISO 8601 date-time - the offset is
+            required, so `2026-05-01T00:00:00` (no `Z` or `+hh:mm`) is rejected
+            with `400 VALIDATION_ERROR`, as is a date-only value.
+        - name: cursor
+          in: query
+          schema: { type: string, maxLength: 8192 }
+          description: |
+            Opaque continuation cursor returned by the prior incremental page. A cursor
+            request may include only `cursor` and `limit`. It is bound to the team, exact
+            API key, filters, and watermark.
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Insight' }
+                  pagination:
+                    oneOf:
+                      - $ref: '#/components/schemas/Pagination'
+                      - $ref: '#/components/schemas/CursorPagination'
+              examples:
+                offset:
+                  summary: Offset page
+                  value:
+                    data:
+                      - id: "123e4567-e89b-42d3-a456-426614174000"
+                        title: "Scheduled exports are needed for reporting"
+                        category: "feature request"
+                        severity: "medium"
+                        customer_id: "c0ffee00-0000-4000-8000-000000000001"
+                        customer_name: "Acme Co"
+                        source: "gong_call_abc123"
+                        source_date: "2026-05-14T10:30:00Z"
+                        created_at: "2026-05-14T10:32:00Z"
+                        updated_at: "2026-05-15T08:12:00Z"
+                        feature_area_id: "523e4567-e89b-42d3-a456-426614174004"
+                        feature_area_name: "Exports"
+                        product_area_id: "423e4567-e89b-42d3-a456-426614174003"
+                        product_area_name: "Operations"
+                        products:
+                          - id: "223e4567-e89b-42d3-a456-426614174001"
+                            name: "Core Platform"
+                            status: "active"
+                        product_features:
+                          - id: "323e4567-e89b-42d3-a456-426614174002"
+                            title: "Scheduled exports"
+                            product_id: "223e4567-e89b-42d3-a456-426614174001"
+                    pagination: { total: 1, limit: 50, offset: 0 }
+                incremental:
+                  summary: Incremental page
+                  value:
+                    data: []
+                    pagination:
+                      limit: 200
+                      has_more: false
+                      next_cursor: null
+                      sync_until: "2026-05-14T10:30:00.123456Z"
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/InsightsUnavailable' }
+
+  /insights/{id}:
+    get:
+      operationId: getInsight
+      tags: [Insights]
+      summary: Get an insight
+      description: |
+        Full insight detail with evidence: pain point, workaround, competitor gap,
+        willingness to pay, feature area, product associations, and the verbatim quote.
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Insight detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InsightDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [Products]
+      summary: List products
+      description: |
+        Current product vocabulary for the authenticated team. Draft and active products
+        are returned by default. Use these immutable IDs with `product_id` filters.
+      parameters:
+        - name: include_retired
+          in: query
+          schema: { type: boolean, default: false }
+          description: Include retired products as well as draft and active products.
+      responses:
+        '200':
+          description: Product vocabulary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Product' }
+              example:
+                data:
+                  - id: "123e4567-e89b-42d3-a456-426614174000"
+                    name: "Core Platform"
+                    description: "Shared platform capabilities"
+                    aliases: ["Platform"]
+                    key_features: ["Permissions", "Exports"]
+                    url: "https://example.com/products/core"
+                    status: "active"
+                    source: "manual"
+                    sort_order: 0
+                    created_at: "2026-04-02T00:00:00Z"
+                    updated_at: "2026-05-01T00:00:00Z"
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /areas:
+    get:
+      operationId: listAreas
+      tags: [Products]
+      summary: List product and feature areas
+      x-mint:
+        metadata:
+          description: "List active product and feature areas with all-time insight totals and earliest feedback dates, or include archived areas when needed."
+      description: |
+        Current product-area and feature-area vocabulary. Each area includes its all-time
+        insight total and earliest feedback date, so an empty filtered result can be
+        distinguished from a scope with little or no coverage. Active areas are returned
+        by default.
+      parameters:
+        - name: include_archived
+          in: query
+          schema: { type: boolean, default: false }
+          description: Include archived product areas and feature areas.
+      responses:
+        '200':
+          description: Nested area vocabulary with all-time coverage totals
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProductArea' }
+              example:
+                data:
+                  - id: "223e4567-e89b-42d3-a456-426614174000"
+                    name: "Operations"
+                    description: "Operational workflows"
+                    status: "active"
+                    sort_order: 0
+                    insight_count: 84
+                    feedback_since: "2026-01-12T09:00:00Z"
+                    feature_areas:
+                      - id: "323e4567-e89b-42d3-a456-426614174000"
+                        name: "Exports"
+                        description: "Data export workflows"
+                        status: "active"
+                        sort_order: 0
+                        insight_count: 84
+                        feedback_since: "2026-01-12T09:00:00Z"
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /coverage:
+    get:
+      operationId: getCoverage
+      tags: [Analytics]
+      summary: Check evidence coverage
+      x-mint:
+        metadata:
+          description: "Check whether a product or area scope has enough evidence for reliable analysis, including coverage dates and windowed insight totals."
+      description: |
+        Classifies whether evidence in a product or area scope is informative, too thin,
+        or predates team coverage. The current density threshold is 50 distinct insights.
+        `policy_version` makes future policy changes explicit.
+
+        `scope.feedback_since` and `scope.all_time_insight_count` ignore the requested date
+        window but keep the product and area filters. Windowed counts apply every filter.
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+        - $ref: '#/components/parameters/ProductFeatureId'
+        - $ref: '#/components/parameters/ProductAreaId'
+        - $ref: '#/components/parameters/FeatureAreaId'
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Coverage verdict and supporting totals
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Coverage' }
+              example:
+                verdict: "informative"
+                reason: "density_threshold_met"
+                reads_as: "84 insights across 6 themes cover the requested scope, so a weak match is worth noticing — but it still is not proof that nobody wants it."
+                policy_version: "1"
+                density_threshold: 50
+                filters:
+                  product_id: null
+                  product_feature_id: null
+                  product_area_id: "223e4567-e89b-42d3-a456-426614174000"
+                  feature_area_id: null
+                date_range: { from: null, to: null }
+                scope:
+                  insight_count: 84
+                  all_time_insight_count: 84
+                  theme_count: 6
+                  customer_count: 31
+                  deal_blocker_count: 4
+                  feedback_since: "2026-01-12T09:00:00Z"
+                team:
+                  insight_count: 508
+                  feedback_since: "2025-11-03T12:00:00Z"
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /themes:
+    get:
+      operationId: listThemes
+      tags: [Themes]
+      summary: List / search themes
+      x-mint:
+        metadata:
+          description: "List or search top-level product themes by status, product scope, evidence date, or meaning, with deterministic sorting and pagination."
+      description: |
+        Top-level problem clusters, RIC-scored, most impactful first. Each theme rolls up
+        one or more buildable features. Filter by status, product scope, date, or search
+        text. Evidence filters recompute `insight_count`, `unique_customer_count`, and
+        `deal_blocker_count` from distinct canonical evidence across the theme and its
+        active features; themes with no matching evidence are omitted.
+
+        Search is lexical by default: the complete `q` value must occur as one
+        case-insensitive substring in the theme title or description. Set
+        `search_mode=semantic` to match by meaning instead. Semantic results are ordered
+        by similarity descending, then immutable theme ID; this relevance order overrides
+        `sort`. If query embedding generation is unavailable, the request returns `503`
+        by default. Set `allow_fallback=true` to permit lexical fallback. Always inspect
+        the response's `search_mode` and `min_similarity` fields to determine what was
+        applied.
+
+        By default, merged themes are excluded. Set `include_retired=true` to add valid
+        merged themes to the selected status set. Each returned merged theme has a
+        `replacement_theme_id` that points directly to the final surviving theme; callers
+        never need to follow a chain. Search and other filters still apply to the retired
+        theme's own stored record and evidence.
+
+        The default response is CURATED, not a census: each team has an adaptive
+        size floor, computed nightly from that team's own distribution, and very
+        small items below it are excluded — the same set the ClosedLoop AI app
+        shows. `pagination.total` counts the curated set. Set `show_all=true` for
+        every row regardless of size. Teams with too little data to compute a
+        floor are never filtered.
+
+        A theme's size is measured through its live features, so the floor cannot
+        be evaluated for a finished theme. `status=shipped` and
+        `status=declined` therefore return their rows in full, unfiltered by
+        size. `include_retired=true` exempts only the retired rows it adds —
+        the live themes alongside them stay filtered.
+        `/features` differs — a feature is sized by its own insight count, so its
+        floor applies whatever its status.
+      parameters:
+        - name: show_all
+          in: query
+          schema: { type: boolean, default: false }
+          description: "Include themes below the team's adaptive size floor. Default false."
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 500 }
+          description: Search text. Required when search_mode is semantic.
+        - name: search_mode
+          in: query
+          schema:
+            type: string
+            enum: [lexical, semantic]
+            default: lexical
+          description: Lexical substring matching, or semantic matching against theme embeddings.
+        - name: min_similarity
+          in: query
+          schema:
+            type: number
+            format: float
+            minimum: 0.3
+            maximum: 1
+            default: 0.5
+          description: Minimum cosine similarity for semantic search. Valid only when search_mode is semantic.
+        - name: allow_fallback
+          in: query
+          schema: { type: boolean, default: false }
+          description: Permit lexical fallback if semantic search is unavailable. Valid only when search_mode is semantic.
+        - name: include_retired
+          in: query
+          schema: { type: boolean, default: false }
+          description: Add valid merged themes, each with its final replacement_theme_id. Other filters still apply.
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, declined, shipped, parked] }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [ric_score, insight_count, unique_customer_count, created_at], default: ric_score }
+        - $ref: '#/components/parameters/ProductId'
+        - $ref: '#/components/parameters/ProductFeatureId'
+        - $ref: '#/components/parameters/ProductAreaId'
+        - $ref: '#/components/parameters/FeatureAreaId'
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of themes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, pagination, search_mode, min_similarity]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Theme' }
+                  pagination: { $ref: '#/components/schemas/Pagination' }
+                  search_mode:
+                    type: string
+                    enum: [lexical, semantic]
+                    description: Search mode actually applied. Lexical indicates lexical/default search or an explicitly allowed fallback.
+                  min_similarity:
+                    type: number
+                    format: float
+                    nullable: true
+                    description: Applied semantic threshold, or null when search_mode is lexical.
+              example:
+                data:
+                  - id: "a1b2c3d4-e5f6-4a7b-8c9d-000000000001"
+                    title: "Payment interruption recovery"
+                    description: "Customers need clearer recovery paths after failed transactions."
+                    ric_score: 7.8
+                    status: "active"
+                pagination: { total: 1, limit: 50, offset: 0 }
+                search_mode: "semantic"
+                min_similarity: 0.5
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/ThemesUnavailable' }
+
+  /themes/{id}:
+    get:
+      operationId: getTheme
+      tags: [Themes]
+      summary: Get a theme
+      x-mint:
+        metadata:
+          description: "Get one product theme with its severity breakdown, affected customers, supporting insights, buildable features, and merge destination."
+      description: |
+        Theme detail with its evidence: severity breakdown, affected customers, top
+        supporting insights, and its features. If this theme was merged into another,
+        the response is `410 Gone` with the final surviving `replacement_theme_id`.
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Theme detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ThemeDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { $ref: '#/components/responses/ThemeRetired' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /features:
+    get:
+      operationId: listFeatures
+      tags: [Features]
+      summary: List / search features
+      x-mint:
+        metadata:
+          description: "List or search buildable features by theme, product, area, status, or text, with scoped evidence counts and deterministic sorting."
+      description: |
+        Buildable features: the shippable children of a theme. Filter by `theme_id`,
+        `product_id`, `feature_area_id`, `product_area_id`, `product_feature_id`,
+        status, or search text.
+        Product fields are null when a feature has not been assigned to a product.
+
+        `feature_area_id` is a subject area from `/areas`, NOT a feature ID from this
+        endpoint. The two are different kinds of ID: a feature ID identifies one
+        buildable feature and is what `/features/{id}` takes, while a feature-area ID
+        identifies the area an insight is filed under. `feature_area_id` therefore
+        selects features by the area of their supporting insights.
+
+        With an AREA filter — `feature_area_id`, `product_area_id`, or both —
+        `insight_count` and `unique_customer_count` are RECOMPUTED from the distinct
+        insights in that scope and the distinct customers behind them; features with
+        no matching evidence are omitted, and `pagination.total` counts what is
+        returned. `sort=insight_count` and `sort=unique_customer_count` then rank on
+        those scoped values. `sort=ric_score` is unchanged by the filter: it stays the
+        feature's stored OVERALL score across every area, so a feature can outrank
+        another that has more evidence in the selected scope. Every sort resolves ties
+        on the immutable feature ID, so paging is deterministic. With NEITHER area
+        filter the counts are the feature's stored all-area totals. Every filter on
+        this endpoint combines with AND.
+
+        The default response is CURATED, not a census: each team has an adaptive
+        size floor, computed nightly from that team's own distribution, and very
+        small items below it are excluded — the same set the ClosedLoop AI app
+        shows. `pagination.total` counts the curated set. Set `show_all=true` for
+        every row regardless of size. Teams with too little data to compute a
+        floor are never filtered.
+
+        Unlike `/themes`, this floor applies at every status: a feature is sized
+        by its own insight count, which a finished feature still has. That size is the
+        feature's OVERALL insight count, so the floor is unaffected by the area
+        filters and `show_all=true` does not widen the selected area. The floor and
+        the published count therefore read different numbers: a returned feature can
+        carry a scoped `insight_count` below the floor, because the floor judged its
+        overall size, and a feature whose evidence sits entirely in the selected area
+        is still hidden when its overall count is below the floor.
+      parameters:
+        - name: show_all
+          in: query
+          schema: { type: boolean, default: false }
+          description: "Include features below the team's adaptive size floor. Default false."
+        - $ref: '#/components/parameters/Query'
+        - name: search_mode
+          in: query
+          schema:
+            type: string
+            enum: [lexical, semantic]
+            default: lexical
+          description: |
+            Lexical substring matching against the feature's own title and
+            description, or semantic matching against feature embeddings.
+
+            Semantic search returns rows best-match-first and therefore OVERRIDES
+            `sort`. Relevance order and size order are mutually exclusive: a caller
+            relying on `sort=insight_count` for scope-aware ordering loses it when
+            semantic is enabled.
+
+            Semantic requests share ONE rate budget with `/themes`; they are not
+            separately allowanced.
+        - name: min_similarity
+          in: query
+          schema:
+            type: number
+            format: float
+            minimum: 0.3
+            maximum: 1
+            default: 0.5
+          description: |
+            Minimum cosine similarity for semantic search. Valid only when
+            search_mode is semantic.
+        - name: allow_fallback
+          in: query
+          schema: { type: boolean, default: false }
+          description: |
+            Permit falling back to lexical when an embedding cannot be generated.
+            Default false, so such a request fails with 503 rather than silently
+            returning a different result set. The response always reports the mode
+            that actually ran.
+        - name: theme_id
+          in: query
+          schema: { type: string, format: uuid }
+          description: Return only the features under this theme.
+        - $ref: '#/components/parameters/ProductId'
+        - $ref: '#/components/parameters/FeatureAreaId'
+        - name: product_area_id
+          in: query
+          schema: { type: string, format: uuid }
+          description: |
+            Return only features with supporting insights filed anywhere under this
+            parent product area, with `insight_count` and `unique_customer_count`
+            recomputed over exactly that evidence. This is `feature_area_id` one
+            level up: a product area is the parent of many feature areas, so it is
+            the coarser cut of the same question. Combines with every other filter
+            using AND, so pairing it with `feature_area_id` narrows to that one
+            child area — and yields nothing when that area sits under a different
+            product area.
+
+            ARCHIVED child areas are excluded, which `feature_area_id` does not do:
+            naming an archived area directly still counts its evidence, while its
+            parent product area does not. A product area whose children are all
+            archived therefore returns an empty list. `/areas` with
+            `include_archived=true` sums archived children into a product area's
+            `insight_count`, so that total can exceed what this filter returns.
+        - name: product_feature_id
+          in: query
+          schema: { type: string, format: uuid }
+          description: |
+            Return only the feature with this ID. On THIS endpoint the parameter
+            names the listed resource itself, so it selects that one feature;
+            on `/insights` and `/themes` the same parameter instead means
+            "linked to this feature". Combines with every other filter using
+            AND, so pairing it with `feature_area_id` answers "does this feature
+            have evidence in that area, and how much" in one call. Use
+            `/features/{id}` to fetch one feature with its evidence, severity
+            breakdown and affected customers.
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, declined, shipped, parked] }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [ric_score, insight_count, unique_customer_count, created_at], default: ric_score }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of features
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, pagination, search_mode, min_similarity]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Feature' }
+                  pagination: { $ref: '#/components/schemas/Pagination' }
+                  search_mode:
+                    type: string
+                    enum: [lexical, semantic]
+                    description: "Search mode actually applied. Lexical indicates lexical/default search or an explicitly allowed fallback."
+                  min_similarity:
+                    type: number
+                    format: float
+                    nullable: true
+                    description: "Applied semantic threshold, or null when the applied mode was lexical."
+
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /features/{id}:
+    get:
+      operationId: getFeature
+      tags: [Features]
+      summary: Get a feature
+      description: |
+        Feature detail with its evidence: severity breakdown, affected customers, and top
+        supporting insights.
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Feature detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeatureDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /customers:
+    get:
+      tags: [Customers]
+      summary: List / search customers
+      description: |
+        Customers who gave feedback, with CRM context (plan, ARR, active/churned) and
+        **account-family** hierarchy: a parent account and its child properties.
+      parameters:
+        - $ref: '#/components/parameters/Query'
+        - name: is_active_customer
+          in: query
+          schema: { type: boolean }
+          description: "Filter on the tri-state customer status. true returns only confirmed active customers; false returns only accounts resolved as not active. Accounts whose status could not be resolved (is_active_customer null) are excluded by BOTH values."
+        - name: parent_id
+          in: query
+          schema: { type: string, format: uuid }
+          description: Return the child customers under this parent account (account family).
+        - name: parents_only
+          in: query
+          schema: { type: boolean }
+          description: Return only top-level parent accounts, rolling up child properties.
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of customers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Customer' }
+                  pagination: { $ref: '#/components/schemas/Pagination' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /customers/{id}:
+    get:
+      tags: [Customers]
+      summary: Get a customer
+      x-mint:
+        metadata:
+          description: "Get one customer profile with its account summary, product insights, churn state, deals, people, and chronological activity timeline."
+      description: |
+        Customer profile with history: their insights, churn state, deals, and a timeline.
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Customer detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Customer' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /context:
+    get:
+      tags: [Context]
+      summary: List customer context
+      x-mint:
+        metadata:
+          description: "List strategic customer context such as churn reasons, competitor mentions, and satisfaction, filtered by customer, type, or date."
+      description: |
+        Strategic intelligence records: churn reasons, competitive mentions, satisfaction
+        and more. Filter by `type`, `customer_id`, or date range. Shares `customer_id` with
+        insights, so you can line the two up for the same customer.
+      parameters:
+        - name: type
+          in: query
+          schema: { type: string }
+          description: >-
+            Context type. Common values: churn_risk, churn_reason, competitor_mention,
+            satisfaction, win_factor, expansion_opportunity, pricing_perception,
+            decision_criteria, general_dislike, deal_blocker (30+ total).
+        - name: customer_id
+          in: query
+          schema: { type: string, format: uuid }
+          description: Filter to context for one customer (same key as on insights).
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of context records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Context' }
+                  pagination: { $ref: '#/components/schemas/Pagination' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /competitors:
+    get:
+      tags: [Competitors]
+      summary: List / search competitors
+      x-mint:
+        metadata:
+          description: "List competitors mentioned by customers, including pressure trends and direction, with name search and links to the underlying evidence."
+      description: |
+        Competitors your customers mention. Each carries a **pressure time series**
+        (mention volume per period) plus a trend direction. A raw total tells you nothing;
+        the shape (rising vs. cooling) is what matters. Search by name; for the underlying
+        quotes use `/competitors/mentions`.
+      parameters:
+        - $ref: '#/components/parameters/Query'
+        - name: granularity
+          in: query
+          schema: { type: string, enum: [day, week, month], default: week }
+          description: Bucket size for each competitor's pressure series.
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of competitors, each with a pressure time series
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Competitor' }
+                  pagination: { $ref: '#/components/schemas/Pagination' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /competitors/mentions:
+    get:
+      tags: [Competitors]
+      summary: Search competitor mentions
+      x-mint:
+        metadata:
+          description: "Search verbatim competitor mentions by competitor, customer, text, or date, with source details and newest evidence returned first."
+      description: |
+        Every competitor mention across your customers, newest first. One row per mention
+        with the **competitor**, the **customer** who said it, the verbatim quote,
+        the source, and when. Filter by competitor, customer, free text, or date. This is the
+        evidence behind the pressure trends.
+      parameters:
+        - $ref: '#/components/parameters/Query'
+        - name: competitor
+          in: query
+          schema: { type: string }
+          description: "Filter by competitor: id or name."
+        - name: customer_id
+          in: query
+          schema: { type: string, format: uuid }
+          description: Filter to mentions from one customer.
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of competitor mentions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/CompetitorMention' }
+                  pagination: { $ref: '#/components/schemas/Pagination' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /trends:
+    get:
+      tags: [Analytics]
+      summary: Time-series trends
+      description: |
+        Zero-filled time series for a metric over a window. Carries a `feedback_since`
+        coverage boundary so early empty buckets aren't misread as "zero activity".
+      parameters:
+        - name: metric
+          in: query
+          required: true
+          schema: { type: string, enum: [insights, themes, features, context, competitor_mentions] }
+        - name: granularity
+          in: query
+          schema: { type: string, enum: [day, week, month], default: week }
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Trend series
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TrendSeries' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /facets:
+    get:
+      tags: [Analytics]
+      summary: Facet counts
+      description: |
+        Available filter values and their counts over the full dataset (categories,
+        severities, sources). Useful for building filter UIs.
+      responses:
+        '200':
+          description: Facet map
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      value: { type: string }
+                      count: { type: integer }
+                example:
+                  category: [{ value: "bug", count: 214 }, { value: "feature request", count: 508 }]
+                  severity: [{ value: "high", count: 96 }, { value: "medium", count: 402 }]
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /integrations:
+    get:
+      tags: [Integrations]
+      summary: List integrations
+      x-mint:
+        metadata:
+          description: "List the data-source integrations connected to the current ClosedLoop AI team, including each integration's configuration and sync status."
+      description: Connected data sources for your team and their sync status.
+      responses:
+        '200':
+          description: Integration list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Integration' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /integrations/{id}:
+    get:
+      tags: [Integrations]
+      summary: Get an integration
+      x-mint:
+        metadata:
+          description: "Get one connected data-source integration for the current ClosedLoop AI team, including its configuration, state, and synchronization status."
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Integration detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Integration' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /usage:
+    get:
+      tags: [Usage]
+      summary: List usage records
+      x-mint:
+        metadata:
+          description: "List ClosedLoop AI credit-consumption records for the current team, filtered by date and returned with pagination for billing transparency."
+      description: Credit consumption records for billing transparency.
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of usage records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/UsageRecord' }
+                  pagination: { $ref: '#/components/schemas/Pagination' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+
+  /health:
+    get:
+      tags: [Meta]
+      summary: Health check
+      x-mint:
+        metadata:
+          description: "Check whether the ClosedLoop AI API is reachable and ready to accept requests; this public liveness endpoint requires no authentication."
+      security: []
+      description: Liveness probe. No authentication required.
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "ok" }
+                  version: { type: string, example: "1.0.0" }
+                  region: { type: string, example: "us" }
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        Team-scoped API key created in the app (Settings → API Keys).
+        Sent as `X-API-Key: <key>` on every request. The header name `apikey`
+        is also accepted as an alias.
+
+  parameters:
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: Resource UUID.
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, default: 50, minimum: 1, maximum: 200 }
+      description: Page size (max 200).
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, default: 0, minimum: 0 }
+      description: Number of records to skip.
+    Query:
+      name: q
+      in: query
+      schema: { type: string }
+      description: Free-text search over titles and content.
+    ProductId:
+      name: product_id
+      in: query
+      schema: { type: string, format: uuid }
+      description: Filter by one product ID from `/products`.
+    ProductFeatureId:
+      name: product_feature_id
+      in: query
+      schema: { type: string, format: uuid }
+      description: Filter by one buildable product feature ID from `/features`.
+    ProductAreaId:
+      name: product_area_id
+      in: query
+      schema: { type: string, format: uuid }
+      description: Filter by one parent product-area ID from `/areas`.
+    FeatureAreaId:
+      name: feature_area_id
+      in: query
+      schema: { type: string, format: uuid }
+      description: |
+        Filter by one child feature-area ID from `/areas`. A feature area is the subject
+        area an insight is filed under; it is NOT a buildable feature ID from
+        `/features`, and the two are never interchangeable.
+    DateFrom:
+      name: date_from
+      in: query
+      schema: { type: string, format: date, pattern: '^\d{4}-\d{2}-\d{2}$' }
+      example: "2026-05-01"
+      description: |
+        Inclusive start date, as a real calendar date in `YYYY-MM-DD`.
+        Any other form is rejected with `400 VALIDATION_ERROR` - including
+        `2026-5-1`, `2026/05/01`, `May 1, 2026`, a bare `2026`, a date-time, and
+        impossible dates such as `2026-02-30`.
+    DateTo:
+      name: date_to
+      in: query
+      schema: { type: string, format: date, pattern: '^\d{4}-\d{2}-\d{2}$' }
+      example: "2026-05-31"
+      description: |
+        Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+        Validated by the same rule as `date_from`.
+
+  responses:
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value: { error: "product_id must be a UUID.", code: "VALIDATION_ERROR" }
+            cursor:
+              summary: Invalid cursor
+              value: { error: "cursor is invalid or expired", code: "VALIDATION_ERROR" }
+    Unauthorized:
+      description: |
+        Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
+        header is absent, or `INVALID_API_KEY` when a key is present but invalid
+        or inactive.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            missing:
+              summary: No key provided
+              value: { error: "API key required.", code: "NO_API_KEY", hint: "Send your key in the X-API-Key header." }
+            invalid:
+              summary: Key invalid or inactive
+              value: { error: "Invalid or inactive API key.", code: "INVALID_API_KEY", hint: "Create a key in Settings → API Keys." }
+    NotFound:
+      description: Resource not found (or not in your team)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "Not found.", code: "NOT_FOUND" }
+    ThemeRetired:
+      description: Theme was merged into another theme
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/RetiredTheme' }
+          example:
+            error: "Theme has been merged into another theme."
+            code: "THEME_RETIRED"
+            replacement_theme_id: "a1b2c3d4-e5f6-4a7b-8c9d-000000000001"
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema: { type: integer, example: 10 }
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: "API key authentication is temporarily unavailable. Please retry shortly."
+                code: "API_KEY_AUTH_UNAVAILABLE"
+    ThemesUnavailable:
+      description: API-key authentication or semantic theme search is temporarily unavailable
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          examples:
+            authentication: { value: 10 }
+            semantic_search: { value: 5 }
+          description: Wait 10 seconds after an authentication failure, or 5 seconds after a semantic-search failure.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: "API key authentication is temporarily unavailable. Please retry shortly."
+                code: "API_KEY_AUTH_UNAVAILABLE"
+            semantic_search:
+              summary: Query embedding generation failed without allowed fallback
+              value:
+                error: "Semantic search is temporarily unavailable."
+                code: "SEMANTIC_SEARCH_UNAVAILABLE"
+                hint: "Retry the request, or set allow_fallback=true to permit lexical search."
+    InsightsUnavailable:
+      description: API-key authentication or incremental insight export is temporarily unavailable
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          examples:
+            authentication: { value: 10 }
+            export: { value: 5 }
+          description: Wait 10 seconds after an authentication failure, or 5 seconds after an export failure.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: "API key authentication is temporarily unavailable. Please retry shortly."
+                code: "API_KEY_AUTH_UNAVAILABLE"
+            export:
+              summary: Safe incremental-export watermark unavailable
+              value:
+                error: "Incremental export is temporarily unavailable."
+                code: "EXPORT_UNAVAILABLE"
+                hint: "Retry the request in a few seconds."
+    RateLimited:
+      description: Semantic theme search rate or concurrency limit reached
+      headers:
+        Retry-After:
+          schema: { type: integer, example: 1 }
+          description: Suggested delay in seconds before retrying.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: "Too many semantic search requests. Please retry shortly."
+            code: "RATE_LIMIT_EXCEEDED"
+
+  schemas:
+    Error:
+      type: object
+      required: [error, code]
+      properties:
+        error: { type: string, description: "User-safe message." }
+        code: { type: string, example: "INVALID_API_KEY" }
+        hint: { type: string, description: "Optional next step." }
+
+    RetiredTheme:
+      type: object
+      required: [error, code, replacement_theme_id]
+      properties:
+        error: { type: string, example: "Theme has been merged into another theme." }
+        code: { type: string, enum: [THEME_RETIRED] }
+        replacement_theme_id:
+          type: string
+          format: uuid
+          description: Immutable ID of the final surviving theme after following the merge chain.
+
+    Pagination:
+      type: object
+      required: [total, limit, offset]
+      properties:
+        total: { type: integer, description: "Total matching records (full set, not the page).", example: 508 }
+        limit: { type: integer, example: 50 }
+        offset: { type: integer, example: 0 }
+
+    CursorPagination:
+      type: object
+      required: [limit, has_more, next_cursor, sync_until]
+      properties:
+        limit: { type: integer, example: 200 }
+        has_more: { type: boolean, example: true }
+        next_cursor:
+          type: string
+          nullable: true
+          description: Opaque cursor for the next page; null on the final page.
+        sync_until:
+          type: string
+          format: date-time
+          example: "2026-05-14T10:30:00.123456Z"
+          description: Fixed upper watermark. Commit it as the next checkpoint only after the final page.
+
+    ProductAssociation:
+      type: object
+      required: [id, name, status]
+      properties:
+        id: { type: string, format: uuid, description: "Immutable product UUID." }
+        name: { type: string, example: "Core Platform" }
+        status: { type: string, enum: [draft, active, retired], example: "active" }
+
+    ProductFeatureAssociation:
+      type: object
+      required: [id, title, product_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: "Product-feature UUID accepted by the product_feature_id filter."
+        title: { type: string, example: "Scheduled exports" }
+        product_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: "Associated product UUID, or null when the feature is not assigned to a product."
+
+    InsightSummary:
+      type: object
+      description: Compact insight evidence embedded in theme and feature detail responses.
+      required: [id, title, severity, source, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        category: { type: string }
+        severity: { type: string, enum: [critical, high, medium, low] }
+        customer_id: { type: string, format: uuid, nullable: true }
+        customer_name: { type: string }
+        source: { type: string }
+        source_date: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    Insight:
+      type: object
+      required: [id, title, severity, source, created_at, updated_at, products, product_features]
+      properties:
+        id: { type: string, format: uuid, example: "123e4567-e89b-42d3-a456-426614174000", description: "Immutable UUID; never reassigned to another insight." }
+        title: { type: string, example: "Users want a dark mode toggle" }
+        category: { type: string, example: "feature request" }
+        severity: { type: string, enum: [critical, high, medium, low], example: "medium" }
+        customer_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: "Resolved customer: the shared key that links an insight to its context (same customer)."
+          example: "c0ffee00-0000-4000-8000-000000000001"
+        customer_name: { type: string, example: "Acme Co" }
+        source: { type: string, example: "gong_call_abc123" }
+        source_date: { type: string, format: date-time, example: "2026-05-14T10:30:00Z" }
+        created_at: { type: string, format: date-time, example: "2026-05-14T10:32:00Z" }
+        updated_at: { type: string, format: date-time, example: "2026-05-15T08:12:00Z", description: "Insight-row update timestamp used by incremental export." }
+        feature_area_id: { type: string, format: uuid, nullable: true }
+        feature_area_name: { type: string, nullable: true, example: "Exports" }
+        product_area_id: { type: string, format: uuid, nullable: true }
+        product_area_name: { type: string, nullable: true, example: "Operations" }
+        products:
+          type: array
+          description: |
+            Recorded product associations. Empty when the insight is unassigned. Some
+            insights cannot be matched automatically with enough confidence.
+          items: { $ref: '#/components/schemas/ProductAssociation' }
+        product_features:
+          type: array
+          description: |
+            Recorded buildable-feature associations, ordered by title and ID. Empty when
+            the insight has no reliable feature match.
+          items: { $ref: '#/components/schemas/ProductFeatureAssociation' }
+
+    InsightDetail:
+      allOf:
+        - $ref: '#/components/schemas/Insight'
+        - type: object
+          properties:
+            content: { type: string, description: "Insight content (always English).", example: "The customer wants a dark mode option for night-time use." }
+            quote: { type: string, description: "Verbatim supporting quote.", example: "I'd honestly pay more if you just had a dark theme." }
+            pain_point: { type: string, example: "Bright interface is hard to use in low light." }
+            workaround: { type: string, example: "Uses a browser dark-mode extension." }
+            competitor_gap: { type: string, example: "Competitor X ships native dark mode." }
+            willingness_to_pay: { type: string, example: "High" }
+            feature_area: { type: string, example: "UI/UX" }
+            source_url: { type: string, format: uri, example: "https://gong.io/calls/abc123" }
+
+    Product:
+      type: object
+      required: [id, name, aliases, key_features, status, source, sort_order, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid, description: "Immutable product UUID." }
+        name: { type: string, example: "Core Platform" }
+        description: { type: string, nullable: true }
+        aliases:
+          type: array
+          items: { type: string }
+        key_features:
+          type: array
+          items: { type: string }
+        url: { type: string, format: uri, nullable: true }
+        status: { type: string, enum: [draft, active, retired] }
+        source: { type: string, enum: [research, manual, pm_tool, crm] }
+        sort_order: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    FeatureArea:
+      type: object
+      required: [id, name, status, sort_order, insight_count]
+      properties:
+        id: { type: string, format: uuid, description: "Immutable feature-area UUID." }
+        name: { type: string, example: "Exports" }
+        description: { type: string, nullable: true }
+        status: { type: string, example: "active" }
+        sort_order: { type: integer, example: 0 }
+        insight_count: { type: integer, example: 84, description: "All-time insights assigned directly to this feature area." }
+        feedback_since: { type: string, format: date-time, nullable: true, description: "Earliest feedback assigned to this feature area." }
+
+    ProductArea:
+      type: object
+      required: [id, name, status, sort_order, insight_count, feature_areas]
+      properties:
+        id: { type: string, format: uuid, description: "Immutable product-area UUID." }
+        name: { type: string, example: "Operations" }
+        description: { type: string, nullable: true }
+        status: { type: string, example: "active" }
+        sort_order: { type: integer, example: 0 }
+        insight_count: { type: integer, example: 84, description: "Sum of all-time insight counts across returned child feature areas." }
+        feedback_since: { type: string, format: date-time, nullable: true, description: "Earliest feedback across returned child feature areas." }
+        feature_areas:
+          type: array
+          items: { $ref: '#/components/schemas/FeatureArea' }
+
+    Coverage:
+      type: object
+      required: [verdict, reason, reads_as, policy_version, density_threshold, filters, date_range, scope, team]
+      properties:
+        verdict:
+          type: string
+          enum: [informative, too_thin, pre_coverage]
+          description: Whether absence or weak evidence in the requested scope can be interpreted meaningfully.
+        reason:
+          type: string
+          enum: [no_team_feedback, window_before_team_coverage, empty_scope_window, below_density_threshold, density_threshold_met]
+        reads_as: { type: string, description: "Human-readable interpretation of the verdict." }
+        policy_version: { type: string, example: "1" }
+        density_threshold: { type: integer, example: 50 }
+        filters:
+          type: object
+          required: [product_id, product_feature_id, product_area_id, feature_area_id]
+          properties:
+            product_id: { type: string, format: uuid, nullable: true }
+            product_feature_id: { type: string, format: uuid, nullable: true }
+            product_area_id: { type: string, format: uuid, nullable: true }
+            feature_area_id: { type: string, format: uuid, nullable: true }
+        date_range:
+          type: object
+          required: [from, to]
+          properties:
+            from: { type: string, nullable: true }
+            to: { type: string, nullable: true }
+        scope:
+          type: object
+          required: [insight_count, all_time_insight_count, theme_count, customer_count, deal_blocker_count, feedback_since]
+          properties:
+            insight_count: { type: integer, description: "Distinct insights in the filtered date window." }
+            all_time_insight_count: { type: integer, description: "Distinct insights for the product/area scope across all time." }
+            theme_count: { type: integer, description: "Distinct active top-level themes reached by the filtered insights." }
+            customer_count: { type: integer, description: "Distinct customers represented by the filtered insights." }
+            deal_blocker_count: { type: integer, description: "Filtered insights marked as deal blockers." }
+            feedback_since: { type: string, format: date-time, nullable: true, description: "Earliest feedback for the product/area scope across all time." }
+        team:
+          type: object
+          required: [insight_count, feedback_since]
+          properties:
+            insight_count: { type: integer, description: "All insights for the authenticated team." }
+            feedback_since: { type: string, format: date-time, nullable: true, description: "Earliest feedback for the authenticated team." }
+
+    Theme:
+      type: object
+      required: [id, title, ric_score, status]
+      properties:
+        id: { type: string, format: uuid, example: "a1b2c3d4-e5f6-4a7b-8c9d-000000000001", description: "Immutable UUID; never reassigned to another theme." }
+        replacement_theme_id:
+          type: string
+          format: uuid
+          description: Present only for a valid merged theme returned by a list request; points directly to the final surviving theme.
+        title: { type: string, example: "Dark mode across the product" }
+        description: { type: string, example: "Customers repeatedly ask for a dark theme for night-time and accessibility." }
+        ric_score: { type: number, example: 7.8, description: "Reach × Impact × Confidence." }
+        reach: { type: number, example: 0.62 }
+        impact: { type: number, example: 0.8 }
+        confidence: { type: number, example: 0.9 }
+        insight_count: { type: integer, example: 34, description: "Supporting insights across the theme." }
+        unique_customer_count: { type: integer, example: 19 }
+        deal_blocker_count: { type: integer, example: 4, description: "Distinct customers represented by deal-blocker evidence." }
+        feature_count: { type: integer, example: 4, description: "Buildable features under this theme." }
+        status: { type: string, enum: [active, declined, shipped, parked], example: "active" }
+        created_at: { type: string, format: date-time, example: "2026-04-02T00:00:00Z" }
+        updated_at: { type: string, format: date-time, example: "2026-06-01T00:00:00Z" }
+
+    ThemeDetail:
+      allOf:
+        - $ref: '#/components/schemas/Theme'
+        - type: object
+          properties:
+            severity_breakdown:
+              type: object
+              example: { critical: 1, high: 8, medium: 20, low: 5 }
+            features:
+              type: array
+              description: The buildable features under this theme.
+              items: { $ref: '#/components/schemas/Feature' }
+            top_insights:
+              type: array
+              items: { $ref: '#/components/schemas/InsightSummary' }
+            affected_customers:
+              type: array
+              items: { $ref: '#/components/schemas/Customer' }
+
+    Feature:
+      type: object
+      required: [id, theme_id, title, ric_score, status]
+      properties:
+        id: { type: string, format: uuid, example: "b2c3d4e5-f6a7-4b8c-9d0e-000000000002" }
+        theme_id: { type: string, format: uuid, example: "a1b2c3d4-e5f6-4a7b-8c9d-000000000001", description: "The parent theme." }
+        title: { type: string, example: "Dark mode toggle in settings" }
+        description: { type: string, example: "A user-controllable dark / light toggle in the settings panel." }
+        ric_score: { type: number, example: 6.9 }
+        insight_count: { type: integer, example: 12, description: "Supporting insights across every area. On `GET /features` with `feature_area_id`, this is instead recomputed from the insights in the selected area only. See `/features/{id}` for how the detail response derives it." }
+        unique_customer_count: { type: integer, example: 9, description: "Distinct customers behind those insights, scoped the same way as `insight_count`." }
+        product_id: { type: string, format: uuid, nullable: true, description: "Assigned product, if any." }
+        product_name: { type: string, nullable: true, example: "Core Platform" }
+        status: { type: string, enum: [active, declined, shipped, parked], example: "active" }
+        created_at: { type: string, format: date-time, example: "2026-04-05T00:00:00Z" }
+        updated_at: { type: string, format: date-time, example: "2026-06-01T00:00:00Z" }
+
+    FeatureDetail:
+      allOf:
+        - $ref: '#/components/schemas/Feature'
+        - type: object
+          properties:
+            insight_count:
+              type: integer
+              description: "Distinct supporting insights across every area, counted from the feature's current evidence. This detail response is never scoped by `feature_area_id`, and it can differ from the same field on `GET /features` without a filter, which reports the stored rollup."
+            unique_customer_count:
+              type: integer
+              description: "Distinct customers behind those insights, counted the same way as `insight_count` above."
+            deal_blocker_count:
+              type: integer
+              description: "Distinct customers represented by deal-blocker evidence."
+            severity_breakdown:
+              type: object
+              example: { critical: 0, high: 3, medium: 7, low: 2 }
+            top_insights:
+              type: array
+              items: { $ref: '#/components/schemas/InsightSummary' }
+            affected_customers:
+              type: array
+              items: { $ref: '#/components/schemas/Customer' }
+
+    Customer:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid, example: "c0ffee00-0000-4000-8000-000000000001" }
+        name: { type: string, example: "Acme Co" }
+        parent_id: { type: string, format: uuid, nullable: true, description: "Parent account (account family), if this is a child property." }
+        parent_name: { type: string, nullable: true, description: "Parent account name." }
+        domain: { type: string, example: "acme.com" }
+        industry: { type: string, example: "Hospitality" }
+        employee_count: { type: integer, example: 250 }
+        arr: { type: number, nullable: true, example: 48000, description: "Annualized recurring revenue: SUM of won-deal annual_value (team currency)." }
+        currency: { type: string, example: "USD" }
+        is_active_customer: { type: boolean, nullable: true, example: true, description: "Tri-state. true = a confirmed active customer; false = resolved and not an active customer; null = the account could not be resolved, so the status is unknown. Never read null as false." }
+        churn_state: { type: string, enum: [active, at_risk, churned], example: "active" }
+        insight_count: { type: integer, example: 23 }
+        last_seen: { type: string, format: date-time, example: "2026-06-10T09:00:00Z" }
+
+    Context:
+      type: object
+      required: [id, type, content, created_at]
+      properties:
+        id: { type: string, format: uuid, example: "51617100-0000-4000-8000-000000000001" }
+        type: { type: string, example: "churn_reason", description: "Context type: see the /context 'type' filter for common values (30+)." }
+        content: { type: string, example: "They're evaluating Competitor X because our reporting is too slow." }
+        customer_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: "Resolved customer: same key as on insights; correlate the two by this."
+          example: "c0ffee00-0000-4000-8000-000000000001"
+        customer_name: { type: string, example: "Acme Co" }
+        source: { type: string, example: "gong_call_def456" }
+        created_at: { type: string, format: date-time, example: "2026-05-20T14:00:00Z" }
+
+    Competitor:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid, example: "0e11e100-0000-4000-8000-000000000001" }
+        name: { type: string, example: "Competitor X" }
+        customer_count: { type: integer, example: 12, description: "Distinct customers who mentioned this competitor." }
+        total_mentions: { type: integer, example: 41, description: "Every mention naming this competitor, including mentions that name several. Context only; read `pressure` for the trend." }
+        trend: { type: string, enum: [rising, steady, falling], example: "rising", description: "Direction of the pressure series." }
+        pressure:
+          type: array
+          description: Mention volume per period is the pressure trend. A single sum says nothing; the change over time matters.
+          items:
+            type: object
+            properties:
+              period: { type: string, example: "2026-05-11" }
+              mentions: { type: integer, example: 7 }
+        first_mentioned: { type: string, format: date-time, example: "2026-03-02T00:00:00Z" }
+        last_mentioned: { type: string, format: date-time, example: "2026-06-18T00:00:00Z" }
+        summary: { type: string, example: "Most-cited alternative on lost deals; wins on native reporting." }
+
+    CompetitorMention:
+      type: object
+      required: [id, competitor_id, mentioned_at]
+      properties:
+        id: { type: string, format: uuid, example: "51617100-0000-4000-8000-000000000009" }
+        competitor_id: { type: string, format: uuid, example: "0e11e100-0000-4000-8000-000000000001", description: "The FIRST competitor named. Read `competitors` when a mention names more than one." }
+        competitor_name: { type: string, example: "Competitor X" }
+        competitors:
+          type: array
+          description: "Every competitor this mention names, in the order the customer said them. A single mention often compares several."
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, example: "0e11e100-0000-4000-8000-000000000001" }
+              name: { type: string, example: "Competitor X" }
+        customer_id: { type: string, format: uuid, nullable: true, example: "c0ffee00-0000-4000-8000-000000000001" }
+        customer_name: { type: string, example: "Acme Co" }
+        quote: { type: string, description: "Verbatim mention.", example: "We're also trialing Competitor X because their reporting is faster." }
+        source: { type: string, example: "gong_call_def456" }
+        mentioned_at: { type: string, format: date-time, example: "2026-05-20T14:00:00Z" }
+
+    TrendSeries:
+      type: object
+      properties:
+        metric: { type: string, example: "insights" }
+        granularity: { type: string, example: "week" }
+        feedback_since: { type: string, format: date-time, example: "2026-02-01T00:00:00Z" }
+        note: { type: string, example: "Buckets before feedback_since are empty due to coverage, not zero activity." }
+        points:
+          type: array
+          items:
+            type: object
+            properties:
+              period: { type: string, example: "2026-05-11" }
+              value: { type: integer, example: 34 }
+
+    Integration:
+      type: object
+      required: [id, type, name, status]
+      properties:
+        id: { type: string, format: uuid, example: "in7e6600-0000-4000-8000-000000000001" }
+        type: { type: string, example: "gong" }
+        name: { type: string, example: "Gong Production" }
+        status: { type: string, enum: [active, inactive, error, pending], example: "active" }
+        last_sync_at: { type: string, format: date-time, example: "2026-06-10T10:00:00Z" }
+        created_at: { type: string, format: date-time, example: "2026-01-01T00:00:00Z" }
+
+    UsageRecord:
+      type: object
+      required: [id, type, credits, timestamp]
+      properties:
+        id: { type: string, format: uuid, example: "05a6e100-0000-4000-8000-000000000001" }
+        type: { type: string, example: "feedback_processing" }
+        credits: { type: integer, example: 5 }
+        source: { type: string, example: "gong_call_abc123" }
+        timestamp: { type: string, format: date-time, example: "2026-05-14T10:32:00Z" }

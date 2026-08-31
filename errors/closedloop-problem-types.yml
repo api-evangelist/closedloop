@@ -1,0 +1,121 @@
+generated: '2026-08-30'
+method: searched
+source: https://closedloop.sh/docs/api-reference/conventions (error table) enriched from
+  openapi/closedloop-public-api-openapi.yaml 4xx/5xx responses
+format: vendor-json
+format_note: >-
+  NOT RFC 9457. No operation returns application/problem+json. The envelope is a flat vendor JSON
+  object: {"error": <user-safe message>, "code": <stable code>, "hint": <optional next step>}, with
+  documented error-specific fields added on some codes. `error` and `code` are required by the
+  Error schema; `hint` is optional.
+envelope:
+  content_type: application/json
+  schema: '#/components/schemas/Error'
+  fields:
+  - name: error
+    required: true
+    description: User-safe message. Internal details are never exposed.
+  - name: code
+    required: true
+    description: Stable machine-readable code -- the field to branch on.
+  - name: hint
+    required: false
+    description: Optional next step.
+  example: |
+    {
+      "error": "Invalid or inactive API key.",
+      "code": "INVALID_API_KEY",
+      "hint": "Create a key in Settings, API Keys."
+    }
+problem_types:
+- code: VALIDATION_ERROR
+  status: 400
+  title: A query parameter, filter, or cursor is invalid
+  remediation: Correct the parameter value or restart the export from the last committed sync_until
+    checkpoint.
+  spec_component: '#/components/responses/ValidationError'
+  operations: [listInsights, getCoverage, listThemes, listFeatures]
+- code: UNSUPPORTED_QUERY_PARAMETER
+  status: 400
+  title: A query parameter is not supported on this endpoint
+  remediation: >-
+    Remove the parameter. The message names it and the hint lists what the endpoint accepts. /v1 is
+    strict by design -- an unsupported parameter is rejected rather than ignored, because a filter
+    that silently did nothing would be indistinguishable from one that worked. Support is PER
+    ENDPOINT: search_mode is valid on /themes and /features and rejected on /coverage.
+  spec_component: '#/components/responses/ValidationError'
+- code: NO_API_KEY
+  status: 401
+  title: No API key was provided
+  remediation: Send the key in the X-API-Key header (or its `apikey` alias). Create one in Settings,
+    API Keys.
+  spec_component: '#/components/responses/Unauthorized'
+- code: INVALID_API_KEY
+  status: 401
+  title: The key is invalid or inactive
+  remediation: Create a new key in Settings, API Keys. Revoked keys stop working immediately. Check
+    the key's region matches the base URL -- an EU key only works against eu.api.closedloop.sh.
+  spec_component: '#/components/responses/Unauthorized'
+- code: NOT_FOUND
+  status: 404
+  title: Resource not found, or not in your team
+  remediation: >-
+    Verify the id. IDs are immutable UUIDs and are never recycled, so a 404 means the resource is
+    gone or belongs to another team -- never that the id now points at something else.
+  spec_component: '#/components/responses/NotFound'
+  operations: [getInsight, getTheme, getFeature, 'GET /customers/{id}', 'GET /integrations/{id}']
+- code: THEME_RETIRED
+  status: 410
+  title: Theme was merged into another theme
+  remediation: >-
+    Follow replacement_theme_id in the response body. The pointer is FINAL -- it always names the
+    surviving theme, so callers never need to walk a merge chain. To list current themes alongside
+    merged ones, call GET /themes?include_retired=true.
+  extra_fields: [replacement_theme_id]
+  spec_component: '#/components/responses/ThemeRetired'
+  operations: [getTheme]
+- code: RATE_LIMIT_EXCEEDED
+  status: 429
+  title: Semantic search protection was reached
+  remediation: Honour Retry-After. /themes and /features share one semantic-search budget, so
+    throttling on one can surface on the other.
+  spec_component: '#/components/responses/RateLimited'
+  operations: [listThemes]
+- code: API_KEY_AUTH_UNAVAILABLE
+  status: 503
+  title: API-key authentication infrastructure is temporarily unavailable
+  remediation: Honour Retry-After -- wait 10 seconds before retrying, then use exponential backoff
+    if failures continue.
+  spec_component: '#/components/responses/AuthenticationUnavailable'
+  retryable: true
+- code: EXPORT_UNAVAILABLE
+  status: 503
+  title: An incremental export watermark could not be captured safely
+  remediation: Retry shortly. Do not advance your checkpoint -- restart from the last committed
+    sync_until.
+  spec_component: '#/components/responses/InsightsUnavailable'
+  retryable: true
+  operations: [listInsights]
+- code: SEMANTIC_SEARCH_UNAVAILABLE
+  status: 503
+  title: Semantic search failed and lexical fallback was not allowed
+  remediation: >-
+    Retry, or opt in to lexical fallback with allow_fallback=true. When fallback is allowed the
+    response returns "search_mode": "lexical" and "min_similarity": null, so a client can tell it
+    did not get semantic results.
+  spec_component: '#/components/responses/ThemesUnavailable'
+  retryable: true
+  operations: [listThemes, listFeatures]
+problem_type_count: 10
+retryable_codes: [API_KEY_AUTH_UNAVAILABLE, EXPORT_UNAVAILABLE, SEMANTIC_SEARCH_UNAVAILABLE,
+  RATE_LIMIT_EXCEEDED]
+notable:
+- id: strict-parameter-rejection
+  detail: >-
+    UNSUPPORTED_QUERY_PARAMETER is unusual and agent-friendly: most APIs silently drop unknown query
+    parameters. Rejecting them means an agent that mistypes a filter learns immediately instead of
+    acting on an unfiltered result set.
+- id: 410-with-forwarding-pointer
+  detail: >-
+    THEME_RETIRED returning a FINAL replacement_theme_id (not a chain link) is a genuinely good
+    deprecation primitive for a caller holding stored ids.

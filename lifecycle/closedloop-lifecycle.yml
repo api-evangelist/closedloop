@@ -1,0 +1,110 @@
+generated: '2026-08-30'
+method: searched
+source: https://closedloop.sh/docs/api-reference/conventions,
+  https://closedloop.sh/docs/api-reference/introduction, https://closedloop.sh/pricing,
+  live probes for a changelog / status page
+versioning:
+  scheme: uri-path
+  current_version: v1
+  spec_version: 1.8.0
+  spec_version_source: info.version in https://closedloop.sh/docs/api-reference/openapi.yaml
+  policy_published: false
+  policy_note: >-
+    NOT PUBLISHED. There is no versioning-policy page. The /v1 path is the only version marker, and
+    the docs do not state what would constitute a breaking change, how a v2 would be introduced, or
+    how long v1 would run alongside it. The spec's own info.version (1.8.0) advances independently
+    of the URI version and is not explained anywhere in the docs.
+deprecation:
+  policy_published: false
+  policy_url: null
+  sunset_header: not-documented
+  deprecation_header: not-documented
+  rfc8594: false
+  rfc8594_note: >-
+    No Sunset or Deprecation response header is documented and neither appears in the published
+    OpenAPI. RFC 8594 is not implemented.
+  deprecated_operations: []
+  deprecated_operations_note: >-
+    DERIVED -- zero of the 20 operations in the published spec carry `deprecated: true`. No
+    parameter or schema property is marked deprecated either.
+  resource_retirement:
+    supported: true
+    mechanism: 410 Gone with a forwarding pointer
+    detail: >-
+      The one genuine lifecycle primitive this API ships is at the RESOURCE level, not the API
+      level. A merged theme returns 410 THEME_RETIRED carrying replacement_theme_id, and that
+      pointer is FINAL rather than a chain link, so a caller holding a stored id can always resolve
+      to the surviving theme in one hop. GET /themes?include_retired=true lists retired themes
+      alongside current ones. This is a well-built resource-deprecation path in an API with no
+      published API-deprecation policy.
+    codes: [THEME_RETIRED]
+  id_stability:
+    detail: Insight and theme ids are immutable UUIDs and are never recycled. A removed resource
+      404s; its id is not reassigned.
+  legacy_naming:
+    detail: >-
+      The MCP tools search_opportunities / get_opportunity retain the legacy "opportunity"
+      identifier for the entity the product and REST API now call a Theme. The provider documents
+      this explicitly as a compatibility decision rather than renaming and breaking clients.
+sla:
+  published: false
+  detail: >-
+    No public SLA document. The pricing page lists "SLA and on-premise options" as an ENTERPRISE-ONLY
+    feature, excluded from Free and Pay as you go. So an SLA exists contractually for enterprise
+    customers but no terms are published.
+  enterprise_only: true
+  source: https://closedloop.sh/pricing
+status_page:
+  published: false
+  probes:
+  - url: https://closedloop.sh/status
+    status: 404
+  - url: https://status.closedloop.sh
+    status: 403
+    note: >-
+      403 with the body title "Establishing a secure connection" -- an edge/bot challenge, not a
+      status page. The hostname resolves but nothing readable is served, and no documentation page
+      anywhere on closedloop.sh links to a status page. Recorded as NOT PUBLISHED rather than as a
+      live status surface, because we could not confirm a status page exists behind the challenge
+      and no first-party link points at one.
+  detail: >-
+    The API does publish an unauthenticated liveness endpoint -- GET /health on
+    https://api.closedloop.sh/v1/health, probed 200 returning
+    {"status":"ok","version":"1.0.0","region":"us"}. That is a machine liveness check, not an
+    incident-history status page.
+  health_endpoint:
+    url: https://api.closedloop.sh/v1/health
+    status: 200
+    auth: none
+    body: '{"status":"ok","version":"1.0.0","region":"us"}'
+    note: >-
+      The version this endpoint reports ("1.0.0") does NOT match the published OpenAPI info.version
+      (1.8.0). Recorded as observed, not reconciled.
+changelog:
+  published: false
+  probes:
+  - url: https://closedloop.sh/changelog
+    status: 404
+  - url: https://closedloop.sh/docs/changelog
+    status: 404
+  detail: >-
+    No dated API changelog or release-notes page exists on the marketing site or the docs site, and
+    none appears in the docs llms.txt index. A consumer has no published way to learn what changed
+    between spec versions. The blog at https://closedloop.sh/blog (200) carries articles, not
+    release notes.
+support:
+  channels:
+  - kind: email
+    value: support@closedloop.sh
+  - kind: email
+    value: dpo@closedloop.sh
+    purpose: privacy / data protection
+  - kind: web
+    value: https://closedloop.sh/contact
+    status: 200
+  priority_support_tier: Pay as you go and above
+maintenance_signals:
+  api_spec: current -- v1.8.0, served live and parsing cleanly
+  npm_cli: stale -- '@closedloop-ai/cli' 0.2.4 last published 2025-10-17
+  npm_mcp_client: stale -- '@closedloop-ai/mcp-client' 1.5.0 last published 2026-02-22, undocumented
+  source_repos: '@closedloop-ai package repositories on github.com/closed-loop-ai return 404'

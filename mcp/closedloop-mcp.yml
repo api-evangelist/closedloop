@@ -1,0 +1,325 @@
+generated: '2026-08-30'
+method: probed
+source: https://closedloop.sh/docs/mcp-server/overview + https://closedloop.sh/docs/mcp-server/tools
+  + live POST tools/list against every advertised endpoint
+name: ClosedLoop AI MCP Server
+description: >-
+  First-party hosted MCP server over Streamable HTTP with OAuth 2.1. Two regional deployments (US and
+  EU). Exposes product-intelligence tools over the same data the /v1 REST API reads, plus one MCP
+  prompt. Documented for Claude Code, Claude Desktop/web/Cowork, Cursor, LiteLLM and any MCP HTTP
+  client; machine-to-machine access uses OAuth client_credentials with private_key_jwt or a shared
+  secret.
+deployment:
+  mode: remote
+  endpoint: https://mcp.closedloop.sh
+  auth: oauth
+  verified: probed
+  note: >-
+    THE PATH IS THE HOST ROOT. POSTing JSON-RPC to https://mcp.closedloop.sh returns the MCP OAuth
+    challenge; https://mcp.closedloop.sh/mcp returns 404 ROUTE_NOT_FOUND. The provider's own docs
+    give the bare host to `claude mcp add --transport http`, which agrees. A second live MCP endpoint
+    also answers at https://api.closedloop.sh/mcp with its own OAuth metadata (issuer
+    https://api.closedloop.sh/mcp) -- it is undocumented and is recorded below, not advertised.
+    ClosedLoop AI also publishes an npm package @closedloop-ai/mcp-client (1.5.0, 2026-02-22, bin
+    `closedloop-mcp`) which no current documentation page references; because the documented and
+    probed product is the hosted URL, mode is `remote`, not `both`. See packages/.
+endpoints:
+- region: us
+  url: https://mcp.closedloop.sh
+  transport: streamable-http
+  probe:
+    method: POST tools/list (jsonrpc 2.0)
+    status: 401
+    body: '{"jsonrpc":"2.0","error":{"code":-32000,"message":"Authorization required"}}'
+    www_authenticate: Bearer resource_metadata="https://mcp.closedloop.sh/.well-known/oauth-protected-resource"
+    rfc9728_compliant: true
+- region: eu
+  url: https://eu.mcp.closedloop.sh
+  transport: streamable-http
+  probe:
+    method: POST tools/list (jsonrpc 2.0)
+    status: 401
+    www_authenticate: Bearer resource_metadata="https://eu.mcp.closedloop.sh/.well-known/oauth-protected-resource"
+    rfc9728_compliant: true
+- region: us
+  url: https://api.closedloop.sh/mcp
+  transport: streamable-http
+  documented: false
+  probe:
+    method: POST tools/list (jsonrpc 2.0)
+    status: 401
+    www_authenticate: Bearer resource_metadata="https://api.closedloop.sh/mcp/.well-known/oauth-protected-resource"
+    rfc9728_compliant: true
+  note: Undocumented but live. OAuth issuer is https://api.closedloop.sh/mcp, distinct from the
+    mcp.closedloop.sh issuer.
+- region: us
+  url: https://mcp.closedloop.sh/mcp
+  status: 404
+  note: NOT an endpoint. Returns {"error":"Route not found","code":"ROUTE_NOT_FOUND"}. Recorded so a
+    later run does not re-guess the conventional /mcp suffix.
+authorization:
+  model: oauth2.1
+  dynamic_client_registration: true
+  registration_endpoint: https://mcp.closedloop.sh/register
+  authorization_endpoint: https://mcp.closedloop.sh/authorize
+  token_endpoint: https://mcp.closedloop.sh/token
+  grant_types:
+  - authorization_code
+  - refresh_token
+  - client_credentials
+  pkce:
+  - S256
+  token_endpoint_auth_methods:
+  - none
+  - client_secret_basic
+  - client_secret_post
+  - private_key_jwt
+  signing_algs:
+  - RS256
+  - ES256
+  scopes:
+  - mcp:tools
+  - mcp:read
+  metadata_files:
+  - ../well-known/closedloop-mcp-oauth-authorization-server.json
+  - ../well-known/closedloop-mcp-oauth-protected-resource.json
+  m2m_docs: https://closedloop.sh/docs/account/mcp-service-clients
+  note: >-
+    Regular /v1 REST API keys DO NOT work with MCP -- the provider states this explicitly. MCP
+    requires an OAuth service client.
+tools_source:
+  method: searched
+  url: https://closedloop.sh/docs/mcp-server/tools
+  live_schema_available: false
+  live_schema_note: >-
+    tools/list is OAuth-gated, so the machine inputSchema could not be read anonymously. The tools
+    and parameters below are transcribed from the provider's own published Tools Reference, which
+    documents every parameter with type, default and enum. Full JSON Schemas would need authenticated
+    introspection.
+tools:
+- name: get_overview
+  category: overview-discovery
+  description: High-level summary of the product-intelligence landscape. Documented as the starting
+    point.
+  parameters:
+  - name: time_range
+    type: enum
+    enum: [7d, 30d, 90d, all]
+    default: 30d
+  returns: total insights, deal blockers, churn risks, top categories
+- name: get_facets
+  category: overview-discovery
+  description: Aggregated counts by dimension; top 20 values with counts per dimension.
+  parameters:
+  - name: dimensions
+    type: array
+    required: true
+    enum: [category, severity, feature_area, emotion, country, industry]
+  - name: date_from
+    type: string
+  - name: date_to
+    type: string
+- name: get_trends
+  category: overview-discovery
+  description: Time-bucketed counts for trend analysis, with unique customers and average frustration
+    per period.
+  parameters:
+  - name: query
+    type: string
+  - name: category
+    type: string
+  - name: feature_area
+    type: string
+  - name: granularity
+    type: enum
+    enum: [daily, weekly, monthly]
+    default: weekly
+  - name: date_from
+    type: string
+    default: 90 days ago
+  - name: date_to
+    type: string
+    default: today
+- name: search_customers
+  category: customer-intelligence
+  description: Find customers by name, industry, country or engagement metrics; every result carries
+    revenue context.
+  parameters:
+  - name: query
+    type: string
+  - name: industry
+    type: string
+  - name: country
+    type: string
+  - name: has_active_deals
+    type: boolean
+  - name: has_deal_blockers
+    type: boolean
+  - name: has_churn_risks
+    type: boolean
+  - name: min_insights
+    type: integer
+  - name: sort
+    type: enum
+    enum: [insight_count, deal_value, frustration, recency, name]
+    default: insight_count
+  - name: limit
+    type: integer
+    default: 10
+    range: 1-50
+  - name: offset
+    type: integer
+    default: 0
+- name: get_customer
+  category: customer-intelligence
+  description: Full customer profile -- CRM data, deals, contacts, intelligence summary, strategic
+    context.
+  parameters:
+  - name: id
+    type: string
+    required: true
+- name: search_insights
+  category: product-intelligence
+  description: Hybrid (keyword + semantic) search across product insights; returns 300-character
+    content previews and a customers_mentioned summary.
+  parameters:
+  - name: query
+    type: string
+  - name: customer_id
+    type: string
+  - name: category
+    type: enum
+    enum: [bug, feature request, improvement, integration issue, missing functionality, ux/ui issue,
+      documentation, performance issue, security issue, reporting]
+  - name: severity
+    type: enum
+    enum: [Critical, High, Medium, Low]
+  - name: is_deal_blocker
+    type: boolean
+  - name: is_churn_risk
+    type: boolean
+  - name: feature_area
+    type: string
+  - name: emotion
+    type: string
+  - name: country
+    type: string
+  - name: industry
+    type: string
+  - name: date_from
+    type: string
+  - name: date_to
+    type: string
+  - name: sort
+    type: enum
+    enum: [relevance, severity, frustration, recency]
+    default: relevance
+  - name: limit
+    type: integer
+    default: 20
+    range: 1-100
+  - name: offset
+    type: integer
+    default: 0
+- name: get_insight
+  category: product-intelligence
+  description: Full detail for one insight -- verbatim content, pain point, workaround, use case,
+    business outcomes, kano category, reporter details.
+  parameters:
+  - name: id
+    type: string
+    required: true
+- name: search_signals
+  category: sales-intelligence
+  description: Search strategic context -- satisfaction, churn reasons, competitor mentions, buying
+    behavior.
+  parameters:
+  - name: query
+    type: string
+  - name: type
+    type: string
+    documented_values: [satisfaction, churn_reason, competitor_mention, decision_criteria,
+      purchase_hesitation, win_reason, onboarding_friction]
+  - name: customer_id
+    type: string
+  - name: competitor_name
+    type: string
+  - name: date_from
+    type: string
+  - name: date_to
+    type: string
+  - name: sort
+    type: enum
+    enum: [relevance, recency]
+    default: relevance
+  - name: limit
+    type: integer
+    default: 20
+    range: 1-100
+  - name: offset
+    type: integer
+    default: 0
+- name: get_signal
+  category: sales-intelligence
+  description: Full detail for one context record, including source URL back to the original
+    conversation.
+  parameters:
+  - name: id
+    type: string
+    required: true
+- name: get_competitors
+  category: sales-intelligence
+  description: Configured competitors with mention counts, products, and whether each is a direct
+    competitor. No parameters.
+  parameters: []
+- name: search_opportunities
+  category: themes
+  description: Biggest Themes ranked by business impact. Tool name retains the legacy
+    "opportunities" identifier for compatibility.
+  parameters:
+  - name: query
+    type: string
+  - name: status
+    type: enum
+    enum: [active, new, declined, all]
+    default: active
+  - name: velocity_status
+    type: enum
+    enum: [accelerating, active, cooling, dormant]
+  - name: sort
+    type: enum
+    enum: [ric_score, signal_count, customer_count, deal_blocker_count, recency]
+    default: ric_score
+  - name: min_signals
+    type: integer
+    default: 10
+  - name: has_deal_blockers
+    type: boolean
+  - name: limit
+    type: integer
+    default: 10
+    range: 1-50
+  - name: offset
+    type: integer
+    default: 0
+- name: get_opportunity
+  category: themes
+  description: Full Theme detail -- top 50 quotes, customer list with IDs and deal values,
+    total_won_deal_value, and associated Features.
+  parameters:
+  - name: id
+    type: string
+    required: true
+tool_count: 12
+prompts:
+- name: prd
+  kind: slash-command
+  description: Writes a PRD from real customer evidence. Documented as the only MCP prompt the server
+    currently ships.
+  source: https://closedloop.sh/docs/mcp-server/prompts
+clients_documented:
+- Claude Code
+- Claude Desktop / web / Cowork (custom connector)
+- Cursor
+- LiteLLM
+- any MCP HTTP client with OAuth 2.1

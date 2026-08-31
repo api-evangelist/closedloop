@@ -1,0 +1,1 @@
+{"resource":"https://eu.api.closedloop.sh/mcp","authorization_servers":["https://eu.api.closedloop.sh/mcp"],"scopes_supported":["mcp:tools","mcp:read"],"bearer_methods_supported":["header"]}

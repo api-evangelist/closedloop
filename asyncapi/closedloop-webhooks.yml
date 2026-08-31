@@ -1,0 +1,83 @@
+generated: '2026-08-30'
+method: searched
+source: https://closedloop.sh/docs/integrations/webhooks
+source_status: 200
+type: Webhooks
+asyncapi_published: false
+asyncapi_note: >-
+  NO AsyncAPI document exists. Probed /asyncapi.yaml and /asyncapi.json patterns on the API and docs
+  hosts alongside the OpenAPI discovery sweep; nothing was served, and the docs llms.txt index lists
+  no event-specification page. Recorded as absent, not fabricated.
+direction: inbound-only
+direction_detail: >-
+  IMPORTANT: ClosedLoop AI's webhook surface is INGESTION, not notification. A source platform PUSHES
+  events INTO ClosedLoop AI so its content can be turned into product insights. ClosedLoop AI does
+  NOT publish outbound event subscriptions that a customer's system can subscribe to -- there is no
+  documented "webhook endpoints" API, no event delivery log, and no retry/replay contract for
+  outbound delivery, because there is no outbound delivery. Notifications to humans go to Slack or
+  Microsoft Teams through the notification integrations instead.
+availability:
+  self_service: false
+  detail: >-
+    The Integrations page can create, display, test and regenerate a signing secret, but the
+    provider states production use REQUIRES ClosedLoop AI support to confirm workspace routing and
+    validate the endpoint before data is sent. The docs deliberately omit generic endpoint examples,
+    saying they are not a safe substitute for workspace-specific provisioning. So there is no
+    published webhook URL to record -- and that is the provider's stated design, not a gap in our
+    search.
+  varies_by: [platform, workspace, plan, region]
+event_categories:
+- name: Surveys
+  purpose: Survey and form responses
+- name: Feedback
+  purpose: Events from supported product feedback tools
+- name: Reviews
+  purpose: Reviews from supported platforms
+- name: Meetings
+  purpose: Transcripts and notes from supported meeting tools
+payload_contract:
+  shape: native-passthrough
+  detail: >-
+    The source platform sends ITS OWN native payload. ClosedLoop AI validates and transforms only
+    payloads supported by the provisioned platform integration. There is therefore no ClosedLoop AI
+    event schema to document -- the schema is whichever upstream vendor's it is.
+security:
+  algorithm: HMAC-SHA256
+  signed_over: the unmodified raw request body
+  accepted_headers:
+  - x-webhook-signature
+  - x-hub-signature-256
+  - x-signature
+  - typeform-signature
+  encodings: [hex, base64]
+  prefix_accepted: 'sha256='
+  credential: Webhook Key, generated on the Settings > API Keys page -- a SEPARATE credential from a
+    REST API key
+  explicit_negative: >-
+    The docs state plainly that an x-api-key header does NOT authenticate an inbound webhook. Only
+    the signing secret and the configuration confirmed at provisioning are valid.
+  rotation:
+    supported: true
+    self_service: true
+    caveat: >-
+      Requests signed with the previous secret FAIL immediately after regeneration -- there is no
+      documented dual-secret overlap window. Rotation must be coordinated with the source platform.
+verification:
+  tool: Data Log
+  url: https://closedloop.sh/docs/guides/data-log
+  detail: >-
+    After support confirms a test event, Data Log locates the import under its platform name. The
+    docs caution that "No Insights" alone does NOT prove every webhook processing stage finished --
+    an unusually honest statement about the limits of their own observability surface.
+notification_surfaces:
+- name: Slack
+  docs: https://closedloop.sh/docs/integrations/slack
+  direction: outbound-to-human
+- name: Microsoft Teams Notifications
+  docs: https://closedloop.sh/docs/integrations/microsoft-teams-notifications
+  direction: outbound-to-human
+  detail: New feature requests, customer escalations and weekly digests delivered to Teams channels.
+event_count: 0
+event_count_note: >-
+  Zero ENUMERATED event types. Four event CATEGORIES are named, but because payloads pass through in
+  each source platform's native shape, the provider publishes no event-type list of its own.

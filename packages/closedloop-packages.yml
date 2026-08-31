@@ -1,0 +1,93 @@
+generated: '2026-08-30'
+method: searched
+source: registry.npmjs.org search + package metadata; pypi.org; provider docs at
+  https://closedloop.sh/docs
+note: >-
+  ClosedLoop AI publishes NO client SDK for the /v1 REST API. Its documentation shows raw curl
+  against api.closedloop.sh and contains no SDK or client-library section. What it does publish on
+  npm is two first-party command-line/agent tools under the @closedloop-ai scope. Both predate the
+  current API (spec v1.8.0) and neither is referenced from any current documentation page, so they
+  are recorded as published-but-undocumented. PyPI has no closedloop package. The distribution the
+  provider actually documents -- the closedloop-skills Claude Code plugin -- ships through the
+  Anthropic community plugin marketplace, which is not a package registry and has no version
+  metadata endpoint; it is recorded below with version: null for that reason.
+packages:
+- name: '@closedloop-ai/mcp-client'
+  registry: npm
+  url: https://www.npmjs.com/package/@closedloop-ai/mcp-client
+  official: true
+  official_basis: >-
+    Same @closedloop-ai npm scope and same sole maintainer (jirikobelka) as @closedloop-ai/cli,
+    whose package author email is team@closedloop.sh; package author is "ClosedLoop AI" and the
+    repository is github.com/closed-loop-ai, the GitHub account whose profile blog is
+    https://closedloop.sh.
+  language: javascript
+  kind: mcp-client
+  bin: closedloop-mcp
+  version: 1.5.0
+  published: '2026-02-22'
+  repository: https://github.com/closed-loop-ai/mcp-client
+  repository_status: 404
+  note: >-
+    Published 2026-02-22, six months before the current API spec (v1.8.0) and the hosted MCP the
+    docs prescribe. No current documentation page references it -- every MCP setup path in the docs
+    points at the hosted URL https://mcp.closedloop.sh instead. Its declared GitHub repository
+    returns 404, so the source is not public.
+- name: '@closedloop-ai/cli'
+  registry: npm
+  url: https://www.npmjs.com/package/@closedloop-ai/cli
+  official: true
+  official_basis: package author email is team@closedloop.sh
+  language: typescript
+  kind: cli
+  bin: cl
+  version: 0.2.4
+  published: '2025-10-17'
+  repository: https://github.com/closed-loop-ai/closedloop-cli
+  repository_status: 404
+  note: >-
+    Last published 2025-10-17 -- roughly ten months before the /v1 spec version this repo captured,
+    and it is at 0.2.x. No documentation page mentions a CLI. Declared repository returns 404.
+    Treated as an abandonment signal, not a current SDK.
+- name: closedloop-skills
+  registry: claude-plugin-marketplace
+  url: https://github.com/anthropics/claude-plugins-community
+  install: "/plugin marketplace add anthropics/claude-plugins-community\n/plugin install closedloop-skills@claude-community"
+  official: true
+  official_basis: install instructions published by the provider at
+    https://closedloop.sh/docs/skills/overview
+  language: markdown
+  kind: agent-skills-plugin
+  version: null
+  published: null
+  version_note: >-
+    Checked, nothing to record. The Anthropic community plugin marketplace is not a package registry
+    and exposes no version or publish-date metadata endpoint for a plugin, and the provider's install
+    snippet is unpinned (`closedloop-skills@claude-community` floats to whatever the marketplace
+    currently holds). A consumer cannot tell which revision they are installing either.
+  note: ~25 pre-built Claude Code skills documented at https://closedloop.sh/docs/skills/overview.
+registries_checked:
+- registry: npm
+  result: 2 first-party packages found under the @closedloop-ai scope
+- registry: pypi
+  result: 404 for `closedloop`; no first-party Python package found
+- registry: rubygems
+  result: not searched -- no Ruby surface referenced anywhere in the provider's docs
+- registry: crates.io
+  result: not searched -- no Rust surface referenced anywhere in the provider's docs
+false_positives:
+- name: closedloop
+  registry: npm
+  version: 0.2.1
+  reason: >-
+    NOT ClosedLoop AI. "Composable, fail-closed agent workflow blocks for TypeScript" by
+    github.com/Yash456k -- an unrelated project that happens to share the word.
+- name: github.com/closedloop-ai
+  reason: >-
+    NOT this company. That GitHub org is Closedloop.ai of Austin, TX (blog closedloop.ai), a
+    different company. This provider's GitHub account is github.com/closed-loop-ai, with dashes,
+    whose profile blog is https://closedloop.sh.
+official_sdk_count: 0
+official_sdk_note: >-
+  Zero client SDKs for the REST API. The two npm packages are a CLI and an MCP client, not
+  language bindings for /v1.

@@ -1,0 +1,73 @@
+generated: '2026-08-30'
+method: probed
+source: https://mcp.closedloop.sh/.well-known/oauth-authorization-server and
+  https://mcp.closedloop.sh/.well-known/oauth-protected-resource
+docs: https://closedloop.sh/docs/account/mcp-service-clients
+note: >-
+  derive-oauth-scopes.py returned nothing for this provider, correctly: the published OpenAPI
+  declares only an apiKey securityScheme and no oauth2 flows, so there is nothing in the REST
+  contract to derive from. The scopes below are NOT derived -- they were read from the live OAuth
+  metadata the MCP servers actually serve. The provider publishes the scope NAMES in that metadata
+  but publishes no per-scope description or permission matrix anywhere in its documentation, so the
+  descriptions below say what the metadata establishes and no more.
+applies_to: MCP surface only
+rest_api_scopes:
+  model: none
+  detail: >-
+    The /v1 REST API has no scope model at all. A key is team-scoped and region-scoped and grants
+    read access to everything that team can see; there is no way to issue a narrower key. Since
+    every operation is a GET, the blast radius of a leaked key is disclosure, not modification.
+authorization_servers:
+- issuer: https://mcp.closedloop.sh
+  region: us
+  documented: true
+  scopes_supported: [mcp:tools, mcp:read]
+- issuer: https://eu.mcp.closedloop.sh
+  region: eu
+  documented: true
+  scopes_supported: [mcp:tools, mcp:read]
+- issuer: https://api.closedloop.sh/mcp
+  region: us
+  documented: false
+  scopes_supported: [mcp:tools, mcp:read]
+- issuer: https://eu.api.closedloop.sh/mcp
+  region: eu
+  documented: false
+  scopes_supported: [mcp:tools, mcp:read]
+scopes:
+- name: mcp:tools
+  description: >-
+    Invoke MCP tools. Advertised in both scopes_supported (authorization-server metadata) and the
+    protected-resource metadata on every ClosedLoop AI MCP host.
+  published_description: null
+  published_description_note: The provider publishes no description for this scope. Recorded as
+    null rather than guessed.
+  covers: >-
+    Presumed to gate the 12 documented tools (get_overview, get_facets, get_trends,
+    search_customers, get_customer, search_insights, get_insight, search_signals, get_signal,
+    get_competitors, search_opportunities, get_opportunity). NOT CONFIRMED -- tools/list is
+    OAuth-gated so the per-tool scope requirement could not be observed.
+- name: mcp:read
+  description: >-
+    Read access over the MCP surface. Advertised alongside mcp:tools on every host.
+  published_description: null
+  published_description_note: The provider publishes no description for this scope.
+  covers: >-
+    Relationship to mcp:tools is not documented. Since every MCP tool is itself a read, the two
+    scopes may overlap substantially. NOT CONFIRMED.
+scope_count: 2
+bearer_methods_supported: [header]
+grant_types_supported: [authorization_code, refresh_token, client_credentials]
+gaps:
+- id: no-scope-reference-page
+  detail: >-
+    There is no scopes or permissions reference page anywhere under https://closedloop.sh/docs. The
+    MCP service-clients guide explains how to obtain a credential but never states what each scope
+    grants or which scope a given tool requires. A security reviewer cannot answer "what can this
+    token do" from published material -- only from the two scope names in the metadata.
+- id: rest-has-no-scopes
+  detail: >-
+    A ClosedLoop AI REST key cannot be narrowed. There is no read-only-subset key, no per-resource
+    key, and no way to issue a key that can see insights but not customer CRM context and deal
+    values. For a product whose data includes named customers, ARR and deal values, that is the
+    most consequential authorization gap in the surface.

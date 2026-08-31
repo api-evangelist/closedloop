@@ -1,0 +1,132 @@
+overlay: 1.0.0
+info:
+  title: API Evangelist enhancements for the ClosedLoop AI Public API
+  version: 1.0.0
+extends: ../openapi/closedloop-public-api-openapi.yaml
+x-provenance:
+  generated: '2026-08-30'
+  method: generated
+  source: >-
+    Authored by API Evangelist against
+    openapi/_original/closedloop-openapi-original.yaml (fetched verbatim from
+    https://closedloop.sh/docs/api-reference/openapi.yaml, v1.8.0). The original is never mutated;
+    every enhancement below is expressed as an Overlay action.
+  rationale: >-
+    The published spec is genuinely good -- shared component responses, an allOf detail/summary
+    split, and property descriptions that document the scoped-vs-stored count trap. Its one
+    systematic gap is operationIds: 11 of 20 operations have none, which means half this API cannot
+    be addressed by generated SDKs, MCP tool bindings, Arazzo workflows or a crosswalk without a
+    client inventing its own names. The actions below supply the missing ids in the same
+    verbNoun style the spec already uses for the nine it does have, and reconcile two places where
+    the spec and the provider's own Conventions page disagree.
+actions:
+- target: $.paths['/customers'].get
+  description: >-
+    Add the missing operationId. Follows the spec's own convention (listInsights, listThemes,
+    listFeatures, listProducts, listAreas).
+  update:
+    operationId: listCustomers
+- target: $.paths['/customers/{id}'].get
+  description: Add the missing operationId, matching getInsight / getTheme / getFeature.
+  update:
+    operationId: getCustomer
+- target: $.paths['/context'].get
+  description: Add the missing operationId.
+  update:
+    operationId: listContext
+- target: $.paths['/competitors'].get
+  description: Add the missing operationId.
+  update:
+    operationId: listCompetitors
+- target: $.paths['/competitors/mentions'].get
+  description: Add the missing operationId.
+  update:
+    operationId: listCompetitorMentions
+- target: $.paths['/trends'].get
+  description: Add the missing operationId.
+  update:
+    operationId: getTrends
+- target: $.paths['/facets'].get
+  description: Add the missing operationId.
+  update:
+    operationId: getFacets
+- target: $.paths['/integrations'].get
+  description: Add the missing operationId.
+  update:
+    operationId: listIntegrations
+- target: $.paths['/integrations/{id}'].get
+  description: Add the missing operationId.
+  update:
+    operationId: getIntegration
+- target: $.paths['/usage'].get
+  description: Add the missing operationId.
+  update:
+    operationId: listUsageRecords
+- target: $.paths['/health'].get
+  description: >-
+    Add the missing operationId, and record that this is the only unauthenticated operation in the
+    contract -- confirmed by a live anonymous GET returning 200
+    {"status":"ok","version":"1.0.0","region":"us"}.
+  update:
+    operationId: getHealth
+    security: []
+    x-probed:
+      url: https://api.closedloop.sh/v1/health
+      status: 200
+      date: '2026-08-30'
+- target: $.paths['/features'].get
+  description: >-
+    Reconcile a spec/docs disagreement. The Conventions page states that /themes and /features
+    SHARE one semantic-search budget and that traffic on either can produce a 429 on the other, but
+    only /themes declares a 429 response in the spec. Recorded as an annotation rather than an
+    invented response object, because we did not observe the 429 on /features ourselves.
+  update:
+    x-rate-limit-note: >-
+      Per https://closedloop.sh/docs/api-reference/conventions, this operation shares ONE
+      semantic-search protective budget with GET /themes and can therefore return 429
+      RATE_LIMIT_EXCEEDED even though the published spec declares no 429 for it. Honour Retry-After.
+- target: $.info
+  description: >-
+    Record the provenance of this capture and the observed version disagreement between the spec and
+    the live health endpoint.
+  update:
+    x-apievangelist:
+      captured: '2026-08-30'
+      source_url: https://closedloop.sh/docs/api-reference/openapi.yaml
+      source_status: 200
+      spec_version: 1.8.0
+      health_endpoint_reports: 1.0.0
+      version_disagreement_note: >-
+        info.version is 1.8.0 while GET /health reports "version":"1.0.0". Recorded as observed;
+        the provider does not document what either number tracks.
+      operation_id_coverage_at_capture: 9 of 20
+- target: $.servers
+  description: >-
+    Annotate the two production servers with the region-binding rule the docs state -- a key issued
+    in one region only works against that region's host, with no cross-region routing or fallback.
+  update:
+    x-region-binding: >-
+      Each team lives in exactly one region and each API key is scoped to it. An EU key used against
+      https://api.closedloop.sh/v1 returns 401, and a US key used against
+      https://eu.api.closedloop.sh/v1 does the same. Choose the server by the key's region.
+- target: $.components.securitySchemes.ApiKeyAuth
+  description: Record the observed key prefix and the header alias, both published by the provider.
+  update:
+    x-key-prefix: clai_live_
+    x-key-prefix-source: curl examples at https://closedloop.sh/docs/api-reference/introduction
+    x-header-alias: apikey
+    x-storage: hashed with SHA-256 before storage; not retrievable after creation
+- target: $.paths['/insights'].get
+  description: >-
+    Record the two incremental-export caveats the Conventions page states but the spec does not, so
+    a client generated from the spec alone does not build a warehouse on a false assumption.
+  update:
+    x-incremental-export-caveats:
+    - >-
+      An association-only change (product, product-feature or product-area) may not advance the
+      insight's updated_at, so it may not appear in the export until the insight itself changes.
+    - Deletions are NOT emitted as tombstones. A consumer cannot learn about a removal from this
+      stream.
+    x-cursor-binding: >-
+      Cursors are signed and bound to team, API key, filters and watermark. If the key is rotated
+      mid-run, restart from the last committed sync_until with the new key.

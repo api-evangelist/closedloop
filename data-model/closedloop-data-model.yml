@@ -1,0 +1,246 @@
+generated: '2026-08-30'
+method: derived
+source: openapi/closedloop-public-api-openapi.yaml (v1.8.0) -- $ref links, allOf detail
+  composition, and *_id reference fields; enriched from
+  https://closedloop.sh/docs/api-reference/conventions and https://closedloop.sh/docs/glossary
+note: >-
+  Relationships marked via a $ref are structural (the schema literally embeds the other schema).
+  Relationships marked via an *_id field are id references the API documents as round-trippable
+  filters. Nothing here is inferred from naming alone: every `via` names a field that exists in the
+  published spec.
+id_scheme:
+  format: uuid
+  prefixed: false
+  prefixed_note: >-
+    No typed id prefixes (no `ins_`, `thm_` style). Ids are bare UUIDs, so an id carries no
+    self-describing type -- a caller must track which endpoint produced it.
+  immutability: >-
+    Insight and theme ids are immutable and are never reassigned or recycled. A removed resource
+    404s rather than resolving to something else.
+  merge_pointer: >-
+    A merged theme resolves via replacement_theme_id, returned on the 410 THEME_RETIRED body and on
+    the Theme schema. The pointer is final, never a chain link.
+entities:
+- name: Insight
+  description: One product problem, request or bug extracted from a customer conversation. The atom
+    of the model.
+  operations: [listInsights, getInsight]
+  paths: ['/insights', '/insights/{id}']
+  properties: 16
+  detail_schema: InsightDetail
+  detail_adds: [content, quote, pain_point, workaround, competitor_gap, willingness_to_pay,
+    use_case, business_outcomes, kano_category, reporter]
+  summary_schema: InsightSummary
+- name: Theme
+  description: A recurring problem -- a cluster of related insights, RIC-scored (reach, impact,
+    confidence) and ranked by business impact.
+  operations: [listThemes, getTheme]
+  paths: ['/themes', '/themes/{id}']
+  properties: 15
+  detail_schema: ThemeDetail
+  detail_adds: [severity_breakdown, features, top_insights, affected_customers]
+  retirement_schema: RetiredTheme
+- name: Feature
+  description: A buildable, shippable child of a theme.
+  operations: [listFeatures, getFeature]
+  paths: ['/features', '/features/{id}']
+  properties: 12
+  detail_schema: FeatureDetail
+- name: Customer
+  description: An account or person who gave feedback, carrying CRM context (plan, ARR,
+    active/churned).
+  operations: ['GET /customers', 'GET /customers/{id}']
+  paths: ['/customers', '/customers/{id}']
+  properties: 13
+  self_referential: true
+- name: Context
+  description: Strategic intelligence behind a customer -- churn reasons, competitor mentions,
+    satisfaction, buying behaviour.
+  operations: ['GET /context']
+  paths: [/context]
+  properties: 7
+  detail_operation: none
+- name: Competitor
+  description: A competitor customers mention, with a pressure trend and direction.
+  operations: ['GET /competitors']
+  paths: [/competitors]
+  properties: 9
+- name: CompetitorMention
+  description: One verbatim competitor mention with its source.
+  operations: ['GET /competitors/mentions']
+  paths: [/competitors/mentions]
+  properties: 9
+- name: Product
+  description: A product in the team's current product vocabulary.
+  operations: [listProducts]
+  paths: [/products]
+  properties: 11
+- name: ProductArea
+  description: A product area -- one level above a feature area.
+  operations: [listAreas]
+  paths: [/areas]
+  properties: 8
+- name: FeatureArea
+  description: The subject area an insight is filed under.
+  operations: [listAreas]
+  paths: [/areas]
+  properties: 7
+- name: Integration
+  description: A connected data-source integration with its configuration and sync status.
+  operations: ['GET /integrations', 'GET /integrations/{id}']
+  paths: ['/integrations', '/integrations/{id}']
+  properties: 6
+- name: UsageRecord
+  description: One credit-consumption record for billing transparency.
+  operations: ['GET /usage']
+  paths: [/usage]
+  properties: 5
+- name: Coverage
+  description: Whether the evidence in a product or area scope is informative, too thin, or predates
+    coverage. A quality assertion, not a stored entity.
+  operations: [getCoverage]
+  paths: [/coverage]
+  properties: 9
+  kind: computed
+- name: TrendSeries
+  description: A zero-filled time series for a metric over a window, carrying a feedback_since
+    coverage boundary.
+  operations: ['GET /trends']
+  paths: [/trends]
+  properties: 5
+  kind: computed
+relationships:
+- from: Insight
+  to: Customer
+  kind: belongs_to
+  via: customer_id
+  evidence: id-reference field on Insight and InsightSummary
+- from: Insight
+  to: FeatureArea
+  kind: belongs_to
+  via: feature_area_id
+  evidence: id-reference field; round-trippable as the feature_area_id filter
+- from: Insight
+  to: ProductArea
+  kind: belongs_to
+  via: product_area_id
+  evidence: id-reference field; round-trippable as the product_area_id filter
+- from: Insight
+  to: ProductAssociation
+  kind: has_many
+  via: products[]
+  evidence: $ref '#/components/schemas/ProductAssociation'
+  note: May be empty -- an insight stays unassociated when no reliable automatic match is found.
+- from: Insight
+  to: ProductFeatureAssociation
+  kind: has_many
+  via: product_features[]
+  evidence: $ref '#/components/schemas/ProductFeatureAssociation'
+- from: ProductAssociation
+  to: Product
+  kind: belongs_to
+  via: id
+  evidence: association object carries the product id and resolved title
+- from: ProductFeatureAssociation
+  to: Product
+  kind: belongs_to
+  via: product_id
+  evidence: id-reference field, nullable -- a feature can appear with product_id null
+- from: Feature
+  to: Theme
+  kind: belongs_to
+  via: theme_id
+  evidence: id-reference field; also filterable as the theme_id parameter on GET /features
+- from: Feature
+  to: Product
+  kind: belongs_to
+  via: product_id
+  evidence: id-reference field
+- from: Theme
+  to: Feature
+  kind: has_many
+  via: features[]
+  evidence: $ref on ThemeDetail -- "the buildable features under this theme"
+- from: Theme
+  to: InsightSummary
+  kind: has_many
+  via: top_insights[]
+  evidence: $ref on ThemeDetail
+- from: Theme
+  to: Customer
+  kind: has_many
+  via: affected_customers[]
+  evidence: $ref on ThemeDetail
+- from: Theme
+  to: Theme
+  kind: has_one
+  via: replacement_theme_id
+  evidence: id-reference field on Theme and on RetiredTheme
+  note: The merge-forwarding pointer. Always final -- never requires following a chain.
+- from: Customer
+  to: Customer
+  kind: belongs_to
+  via: parent_id
+  evidence: id-reference field on Customer
+  note: >-
+    The "account family" hierarchy the customers docs describe -- a parent account and its child
+    properties.
+- from: Context
+  to: Customer
+  kind: belongs_to
+  via: customer_id
+  evidence: >-
+    id-reference field. This is the documented join key: insight and context records carry the SAME
+    resolved customer_id, so what a customer said can be lined up with the strategic picture around
+    them.
+- from: CompetitorMention
+  to: Competitor
+  kind: belongs_to
+  via: competitor_id
+  evidence: id-reference field
+- from: CompetitorMention
+  to: Customer
+  kind: belongs_to
+  via: customer_id
+  evidence: id-reference field
+- from: ProductArea
+  to: FeatureArea
+  kind: has_many
+  via: feature_areas[]
+  evidence: $ref '#/components/schemas/FeatureArea'
+envelope_schemas:
+- name: Pagination
+  role: offset-pagination meta (total, limit, offset)
+- name: CursorPagination
+  role: watermark-cursor meta (limit, has_more, next_cursor, sync_until)
+- name: Error
+  role: shared error envelope (error, code, hint)
+composition_pattern:
+  style: allOf
+  detail: >-
+    Each detail schema is `allOf: [<base>, {additional properties}]` -- InsightDetail extends
+    Insight, ThemeDetail extends Theme, FeatureDetail extends Feature. A list response and a detail
+    response for the same entity are therefore guaranteed field-compatible on the base, which is
+    the right shape for a client that caches list rows and hydrates on demand.
+counts:
+  entities: 14
+  relationships: 18
+  schemas_total: 24
+  operations: 20
+modelling_notes:
+- id: two-kinds-of-feature-id
+  detail: >-
+    product_feature_id and feature_area_id name two DIFFERENT id kinds and are never
+    interchangeable. A product feature is a buildable item from /features; a feature area is the
+    subject area an insight is filed under, from /areas. The provider flags this explicitly because
+    the field names invite the mistake.
+- id: scoped-vs-stored-counts
+  detail: >-
+    insight_count and unique_customer_count on a Feature are SCOPED when the list is filtered by
+    feature_area_id or product_area_id, but FeatureDetail always reports the unscoped figure. The
+    same field name can therefore return different numbers from /features and /features/{id}, and
+    the spec says so in the property description rather than leaving it to be discovered.
+- id: no-deletion-signal
+  detail: >-
+    No tombstone or soft-delete field exists on any entity, and the incremental export does not emit
+    deletions. A warehouse built from this API cannot learn that a record was removed.

@@ -1,0 +1,280 @@
+generated: '2026-08-30'
+method: probed
+source: live /.well-known probes, live SCIM ServiceProviderConfig probe, live MCP JSON-RPC probe,
+  and the provider's own docs at https://closedloop.sh/docs
+note: >-
+  Every `conforms: true` below is backed either by a document we fetched or by a live response we
+  received. Claims read only from marketing prose are recorded with conforms: partial or false and
+  said so. ClosedLoop AI operates in product intelligence / SaaS analytics, a sector with no
+  regulatory API regime in the API Evangelist rubric, so no regime-specific standards list applies.
+conformance:
+- id: openapi
+  name: OpenAPI Specification
+  version: 3.0.3
+  conforms: true
+  evidence:
+    url: https://closedloop.sh/docs/api-reference/openapi.yaml
+    status: 200
+    detail: >-
+      Parses as OpenAPI 3.0.3 with 20 paths, 20 operations, 24 component schemas, 8 shared component
+      responses and a declared securityScheme. Saved verbatim to
+      openapi/_original/closedloop-openapi-original.yaml.
+- id: oauth2
+  name: OAuth 2.0 / 2.1
+  conforms: true
+  scope: MCP surface only
+  evidence:
+    url: https://mcp.closedloop.sh/.well-known/oauth-authorization-server
+    status: 200
+    detail: >-
+      authorization_code + refresh_token + client_credentials grants, S256 PKCE, scopes mcp:tools
+      and mcp:read. The REST /v1 API does NOT use OAuth -- it uses an X-API-Key header.
+- id: rfc8414
+  name: OAuth 2.0 Authorization Server Metadata
+  conforms: true
+  evidence:
+    url: https://mcp.closedloop.sh/.well-known/oauth-authorization-server
+    status: 200
+    detail: >-
+      Served on FOUR hosts -- mcp.closedloop.sh, eu.mcp.closedloop.sh, api.closedloop.sh (issuer
+      https://api.closedloop.sh/mcp) and eu.api.closedloop.sh. Each carries issuer,
+      authorization_endpoint, token_endpoint, registration_endpoint, grant_types_supported,
+      response_types_supported, code_challenge_methods_supported and scopes_supported.
+    files:
+    - well-known/closedloop-mcp-oauth-authorization-server.json
+    - well-known/closedloop-eu-mcp-oauth-authorization-server.json
+    - well-known/closedloop-api-oauth-authorization-server.json
+    - well-known/closedloop-eu-api-oauth-authorization-server.json
+- id: rfc9728
+  name: OAuth 2.0 Protected Resource Metadata
+  conforms: true
+  evidence:
+    url: https://mcp.closedloop.sh/.well-known/oauth-protected-resource
+    status: 200
+    detail: >-
+      Served on all four hosts, and correctly ADVERTISED: the 401 from a bare tools/list POST
+      carries WWW-Authenticate: Bearer resource_metadata="https://mcp.closedloop.sh/.well-known/oauth-protected-resource".
+      That is the full RFC 9728 discovery loop working end to end, not just a file sitting at a path.
+- id: rfc7591
+  name: OAuth 2.0 Dynamic Client Registration
+  conforms: true
+  evidence:
+    url: https://mcp.closedloop.sh/.well-known/oauth-authorization-server
+    status: 200
+    detail: >-
+      registration_endpoint https://mcp.closedloop.sh/register is advertised, and the docs confirm
+      the behaviour in prose -- "the OAuth Client ID and Secret are optional, and ClosedLoop AI
+      registers your client automatically."
+- id: rfc7636
+  name: PKCE
+  conforms: true
+  evidence:
+    url: https://mcp.closedloop.sh/.well-known/oauth-authorization-server
+    status: 200
+    detail: code_challenge_methods_supported = ["S256"]. Plain is not offered.
+- id: rfc7523
+  name: JWT client authentication (private_key_jwt)
+  conforms: true
+  evidence:
+    url: https://mcp.closedloop.sh/.well-known/oauth-authorization-server
+    status: 200
+    detail: >-
+      token_endpoint_auth_methods_supported includes private_key_jwt with RS256 and ES256 signing
+      algs. The docs describe registering an RSA or P-256 public key for machine-to-machine access,
+      with a shared secret as the fallback for clients that cannot do private_key_jwt.
+      Notably, api.closedloop.sh/mcp does NOT offer private_key_jwt -- only mcp.closedloop.sh does.
+- id: mcp
+  name: Model Context Protocol
+  conforms: true
+  transport: streamable-http
+  evidence:
+    url: https://mcp.closedloop.sh
+    status: 401
+    detail: >-
+      POST {"jsonrpc":"2.0","id":1,"method":"tools/list"} returns a well-formed JSON-RPC 2.0 error
+      object with an OAuth challenge, which is the correct gated-server behaviour. Live tool schemas
+      could not be read anonymously; the 12 tools recorded in mcp/closedloop-mcp.yml come from the
+      provider's published Tools Reference.
+- id: a2a
+  name: A2A Agent Card
+  conforms: true
+  grade: conformant
+  evidence:
+    url: https://docs.closedloop.sh/.well-known/agent-card.json
+    status: 200
+    detail: >-
+      capabilities is an object, protocolVersion is present ("0.3"), skills is an array, and the
+      optional preferredTransport / defaultInputModes / defaultOutputModes are all present. Graded
+      conformant against A2A 1.0.0. See a2a/closedloop-a2a.yml for deviations.
+- id: scim
+  name: SCIM 2.0
+  conforms: true
+  role: service-provider
+  domain_standard: true
+  evidence:
+    url: https://api.closedloop.sh/api/scim/v2/test/ServiceProviderConfig
+    status: 401
+    detail: >-
+      PROBED, not merely claimed. An anonymous GET returns a SCIM-shaped error envelope carrying the
+      IETF SCIM schema URN verbatim:
+      {"schemas":["urn:ietf:params:scim:api:messages:2.0:Error"],"status":"401","detail":"Bearer token is required"}.
+      A non-SCIM 404 handler on the same host returns the vendor envelope
+      {"error":"Route not found","code":"ROUTE_NOT_FOUND"} instead, so the SCIM error shape is
+      genuinely produced by a SCIM implementation rather than by a catch-all.
+    docs: https://closedloop.sh/docs/integrations/okta-scim-provisioning
+    base_url_template: 'https://api.closedloop.sh/api/scim/v2/{team_id}'
+    base_url_template_eu: 'https://eu.api.closedloop.sh/api/scim/v2/{team_id}'
+    resources: [Users, Groups, Roles]
+    scopes: [scim.read, scim.write, entitlements.read]
+    token_model: OAuth 2.0 bearer token scoped for SCIM calls
+    limitations: >-
+      Password synchronisation is not accepted -- the docs instruct administrators to leave it
+      disabled. userName is used as the primary email address.
+- id: oidc
+  name: OpenID Connect
+  conforms: partial
+  role: relying-party
+  evidence:
+    url: https://closedloop.sh/docs/integrations/okta-oidc-sso
+    status: 200
+    detail: >-
+      ClosedLoop AI acts as an OIDC RELYING PARTY for Okta workforce sign-in (it validates issuer,
+      audience, signature, state, nonce and email claim, and supports JIT provisioning). It is NOT
+      an OpenID Provider -- no host serves /.well-known/openid-configuration (all probed 404). OIDC
+      SSO is an Enterprise-plan feature, not part of the public API surface.
+- id: saml2
+  name: SAML 2.0
+  conforms: partial
+  role: service-provider
+  evidence:
+    url: https://closedloop.sh/docs/integrations/google-workspace-sso
+    status: 200
+    detail: >-
+      SAML SSO documented for Google Workspace and Microsoft Entra ID with JIT provisioning and
+      region-aware setup values. Enterprise-plan feature; no SP metadata document is published at a
+      public URL.
+- id: global-token-revocation
+  name: Global Token Revocation / Universal Logout
+  conforms: true
+  evidence:
+    url: https://closedloop.sh/docs/integrations/okta-oidc-sso
+    status: 200
+    detail: >-
+      A dedicated global token revocation endpoint is published --
+      https://api.closedloop.sh/api/okta/universal-logout (EU equivalent on eu.api). The docs state
+      OIDC Post Logout / browser Single Logout is explicitly NOT supported, which is an honest
+      scoping statement rather than an omission.
+- id: rfc9457
+  name: RFC 9457 Problem Details for HTTP APIs
+  conforms: false
+  evidence:
+    url: https://closedloop.sh/docs/api-reference/conventions
+    status: 200
+    detail: >-
+      No operation produces application/problem+json. Errors use a flat vendor envelope
+      {"error","code","hint"}. The envelope IS consistent across every endpoint and every code is
+      documented and stable, so the shortfall is the media type and the standard field names, not
+      error discipline.
+- id: rfc8594
+  name: RFC 8594 Sunset HTTP Header
+  conforms: false
+  evidence:
+    url: https://closedloop.sh/docs/api-reference/conventions
+    status: 200
+    detail: No Sunset or Deprecation header is documented or present in the spec, and no operation is
+      marked deprecated.
+- id: pagination
+  name: Documented pagination
+  conforms: true
+  evidence:
+    url: https://closedloop.sh/docs/api-reference/conventions
+    status: 200
+    detail: >-
+      Two documented styles -- offset (limit/offset, max 200, `total` is the full-set count) and a
+      signed cursor with a FIXED upper watermark (updated_since / cursor / sync_until / has_more)
+      for repeatable incremental export. The watermark model, the explicit at-least-once recovery
+      guidance, and the stated caveats (association-only changes may not advance updated_at;
+      deletions emit no tombstones) are unusually complete.
+- id: idempotency
+  name: Idempotency keys
+  conforms: na
+  evidence:
+    url: https://closedloop.sh/docs/api-reference/introduction
+    status: 200
+    detail: >-
+      Not applicable. All 20 operations are GETs; the API has no write surface for an idempotency
+      key to protect. Recorded as na, not false.
+- id: json-api
+  name: JSON:API
+  conforms: false
+  evidence:
+    url: https://closedloop.sh/docs/api-reference/conventions
+    status: 200
+    detail: Plain JSON with a `data` + `pagination` envelope; no JSON:API media type, resource
+      objects or relationship linkage.
+- id: odata
+  name: OData
+  conforms: false
+  evidence:
+    url: https://api.closedloop.sh/v1/openapi.json
+    status: 401
+    detail: No $metadata surface and no OData query syntax; filters are plain query parameters.
+- id: webhook-hmac-sha256
+  name: HMAC-SHA256 webhook signature verification
+  conforms: true
+  role: receiver
+  evidence:
+    url: https://closedloop.sh/docs/integrations/webhooks
+    status: 200
+    detail: >-
+      Inbound webhook ingestion verifies HMAC-SHA256 over the unmodified raw request body, accepting
+      the signature in x-webhook-signature, x-hub-signature-256 (the GitHub convention), x-signature
+      or typeform-signature, hex or Base64, with an optional sha256= prefix. The docs also state
+      plainly that an x-api-key header does NOT authenticate an inbound webhook.
+- id: soc2-type-ii
+  name: SOC 2 Type II
+  conforms: true
+  kind: certification-claim
+  evidence:
+    url: https://closedloop.sh/pricing
+    status: 200
+    detail: >-
+      Listed as included on EVERY plan (Free, Pay as you go, Enterprise) in the published plan
+      comparison table. This is the provider's own published claim; the attestation report itself is
+      not public. A trust center exists at https://trust.closedloop.sh (200) but renders
+      client-side and served no machine-readable certification list to our probe.
+- id: gdpr-eu-residency
+  name: GDPR / EU data residency
+  conforms: true
+  kind: published-program
+  evidence:
+    url: https://closedloop.sh/docs/guides/vendor-listing
+    status: 200
+    detail: >-
+      A dedicated vendor-listing page publishes the legal entity (ClosedLoop Labs LLC dba ClosedLoop
+      AI), registered address, processor role, a DPO contact (dpo@closedloop.sh), the categories of
+      personal data processed, and links to a DPA (https://closedloop.sh/dpa, 200), a subprocessor
+      list (https://closedloop.sh/subprocessors, 200) and AI Terms
+      (https://closedloop.sh/ai-terms, 200). EU workspaces store and process personal data in the
+      EU region and, during normal operations, EU workspace data does not leave the EU. Full
+      regional separation is carried through the API (eu.api.closedloop.sh), the MCP
+      (eu.mcp.closedloop.sh), SCIM and SSO.
+domain_standard:
+  market: B2B SaaS workforce identity and lifecycle provisioning
+  standard: SCIM 2.0 (RFC 7643 / RFC 7644)
+  declared: true
+  evidence_location: >-
+    Live response body from https://api.closedloop.sh/api/scim/v2/{team_id}/ServiceProviderConfig
+    containing the schema URN urn:ietf:params:scim:api:messages:2.0:Error, corroborated by the
+    published Okta catalog integration values at
+    https://closedloop.sh/docs/integrations/okta-scim-provisioning.
+  assessment: >-
+    ClosedLoop AI ships the identity standard its market actually uses. An enterprise buyer that
+    already runs Okta, Entra ID or Google Workspace can provision, deprovision and entitle users
+    with no bespoke connector -- SCIM 2.0 for lifecycle, OIDC or SAML for sign-in, and a Global
+    Token Revocation endpoint for offboarding. No sector-specific data standard applies to product
+    intelligence, so SCIM is the correct and only domain standard to record here.
+absent_standards_note: >-
+  fhir, fapi, psd2, odata, openrtb, sparkplug, activitypub, lti, oai-pmh, hl7v2, x12 and iso-20022
+  were considered and are all correctly absent -- none belongs to this provider's market. Recorded
+  so a later run does not re-litigate them.

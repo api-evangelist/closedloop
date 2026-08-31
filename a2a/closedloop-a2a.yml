@@ -1,0 +1,81 @@
+generated: '2026-08-30'
+method: probed
+source: https://docs.closedloop.sh/.well-known/agent-card.json
+discovery:
+  path: /.well-known/agent-card.json
+  canonical: true
+  host: docs.closedloop.sh
+  also_served_at: https://closedloop.sh/docs/.well-known/agent-card.json
+  note: >-
+    The card is served by the docs host, not the marketing root. https://closedloop.sh/.well-known/agent-card.json
+    returns 404; the docs application (which also serves /docs/llms.txt and the published Agent Skill)
+    is what publishes it. docs.closedloop.sh is NOT a catch-all -- it returned 404 "Asset not found"
+    for security.txt, ai-plugin.json and the legacy /.well-known/agent.json in the same probe run,
+    so the 200 on agent-card.json is a real document, not an SPA shell.
+x-evidence:
+  fetched: '2026-08-30'
+  url: https://docs.closedloop.sh/.well-known/agent-card.json
+  http_status: 200
+  content_type: application/json
+  bytes: 1106
+card:
+  file: closedloop-agent-card.json
+  name: ClosedLoop AI
+  url: https://closedloop.sh/docs/
+  version: 1.0.0
+  protocol_version: '0.3'
+  preferred_transport: HTTP+JSON
+  provider_organization: ClosedLoop AI
+  documentation_url: https://closedloop.sh/docs/
+  capabilities:
+    streaming: false
+    push_notifications: false
+  default_input_modes:
+  - text/plain
+  default_output_modes:
+  - text/plain
+  skills:
+  - id: closedloopai
+    name: Closedloopai
+    url: https://closedloop.sh/docs/.well-known/agent-skills/closedloopai/skill.md
+    tags: []
+    probe_status: 200
+    saved_to: ../skills/closedloop-closedloopai-published-skill.md
+grade: conformant
+grade_basis:
+  a2a_version_checked: 1.0.0
+  hard_checks:
+  - check: capabilities is an OBJECT
+    result: pass
+  - check: protocolVersion present
+    result: pass
+    value: '0.3'
+  - check: skills is an ARRAY
+    result: pass
+    count: 1
+  optional_checks:
+  - check: preferredTransport present
+    result: pass
+    value: HTTP+JSON
+  - check: defaultInputModes present
+    result: pass
+  - check: defaultOutputModes present
+    result: pass
+deviations:
+- id: protocol-version-below-1.0
+  severity: informational
+  detail: >-
+    protocolVersion declares "0.3", the pre-1.0 A2A protocol revision, while the card itself uses the
+    post-0.3 canonical /.well-known/agent-card.json path and the supportedInterfaces[] shape. The
+    card is structurally conformant; the declared protocol revision simply predates A2A 1.0.0.
+- id: skill-tags-empty
+  severity: informational
+  detail: The single skill declares an empty tags[] array, so the card carries no skill-level
+    discovery vocabulary.
+- id: no-a2a-task-endpoint
+  severity: informational
+  detail: >-
+    supportedInterfaces[] and url both point at the documentation site (https://closedloop.sh/docs/),
+    not at an A2A JSON-RPC task endpoint. This card advertises documentation and a downloadable Agent
+    Skill rather than a callable A2A agent. The company's actual callable agent surface is the MCP
+    server at https://mcp.closedloop.sh (OAuth-gated), which this card does not reference.

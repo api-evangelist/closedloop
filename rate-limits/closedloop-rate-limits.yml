@@ -1,0 +1,79 @@
+generated: '2026-08-30'
+method: searched
+source: https://closedloop.sh/docs/api-reference/conventions
+source_status: 200
+secondary_source: https://closedloop.sh/docs/account/api-keys
+summary: >-
+  ClosedLoop AI publishes NO numeric per-key quota for the /v1 REST API and returns NO rate-limit
+  response headers. It states plainly that there is no general fixed per-key quota, and that the
+  only throttling is an implementation-defined protective safeguard on SEMANTIC search, enforced
+  independently per API replica rather than as a fleet-wide allowance. Clients are told to handle
+  429 and honour Retry-After. That is a documented posture, not an undocumented gap -- but it means
+  an agent has no runtime budget signal to read, only a 429 to react to.
+limits:
+- scope: per-key, general
+  window: null
+  limit: null
+  burst: null
+  documented: true
+  detail: >-
+    "The public API has no general fixed per-key quota." Also restated on the API Keys page: "The
+    public API currently has no fixed published per-key quota."
+- scope: semantic search (GET /themes and GET /features, shared)
+  window: null
+  limit: null
+  burst: null
+  documented: true
+  enforcement: per-replica
+  shared_budget: true
+  detail: >-
+    Semantic search uses implementation-defined protective rate and concurrency safeguards. /themes
+    and /features share ONE semantic-search budget and are not separately allowanced, so semantic
+    traffic on either endpoint can produce a 429 on the other. Safeguards are enforced independently
+    by API replica and are explicitly NOT a fleet-wide numeric quota. No number is published.
+limit_count: 0
+limit_count_note: >-
+  Zero PUBLISHED NUMERIC limits. Two documented throttling scopes exist but the provider publishes
+  no value for either, by design.
+response_headers:
+  documented: []
+  documented_note: >-
+    No X-RateLimit-*, RateLimit-* or equivalent header is documented anywhere in the API reference,
+    and none appears in the OpenAPI response definitions for the 429. The ONLY documented runtime
+    signal is Retry-After on 429 and on the 503 backoff codes.
+  retry_after:
+    documented: true
+    applies_to:
+    - status: 429
+      code: RATE_LIMIT_EXCEEDED
+      guidance: honour Retry-After
+    - status: 503
+      code: API_KEY_AUTH_UNAVAILABLE
+      guidance: honour Retry-After -- wait 10 seconds, then exponential backoff if failures continue
+    - status: 503
+      code: EXPORT_UNAVAILABLE
+      guidance: retry shortly
+    - status: 503
+      code: SEMANTIC_SEARCH_UNAVAILABLE
+      guidance: retry, or opt in to lexical fallback with allow_fallback=true
+exhaustion:
+  status: 429
+  code: RATE_LIMIT_EXCEEDED
+  envelope: '{"error": "...", "code": "RATE_LIMIT_EXCEEDED", "hint": "..."}'
+  declared_on_operations:
+  - listThemes
+  declared_on_operations_note: >-
+    Only GET /themes declares a 429 in the published OpenAPI. GET /features shares the same semantic
+    budget per the Conventions page but its spec entry omits the 429 -- a spec/docs disagreement
+    captured in overlays/closedloop-public-api-overlay.yaml.
+pagination_ceiling:
+  max_page_size: 200
+  default_page_size: 50
+  detail: limit defaults to 50 and is capped at 200 on offset-paginated list endpoints.
+quota:
+  model: credits
+  detail: >-
+    Volume is metered as CREDITS on ingestion (1 credit = 20 characters processed), not as API
+    request counts. Credit consumption is readable through GET /usage. See
+    plans/closedloop-plans-pricing.yml.
+  usage_endpoint: GET /usage

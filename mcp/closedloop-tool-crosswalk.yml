@@ -1,0 +1,190 @@
+generated: '2026-08-30'
+method: derived
+source: mcp/closedloop-mcp.yml (docs-transcribed tool list) bound against
+  openapi/closedloop-public-api-openapi.yaml (v1.8.0, 20 GET operations)
+note: >-
+  The live MCP tools/list is OAuth-gated (401), so tools were mapped to REST operations by
+  name, documented parameters and returned entity -- not by reading a live inputSchema.
+  Confidence is set accordingly. Where the REST operation carries no operationId in the
+  published spec (11 of 20 do not), the path+method is given instead; see
+  overlays/closedloop-public-api-overlay.yaml, which supplies the missing ids.
+surfaces:
+  openapi:
+    file: openapi/closedloop-public-api-openapi.yaml
+    source_url: https://closedloop.sh/docs/api-reference/openapi.yaml
+    version: 1.8.0
+    servers:
+    - https://api.closedloop.sh/v1
+    - https://eu.api.closedloop.sh/v1
+    auth: X-API-Key header
+    gated: false
+    operations: 20
+  mcp:
+    url: https://mcp.closedloop.sh
+    eu_url: https://eu.mcp.closedloop.sh
+    auth: oauth2.1
+    gated: true
+    gated_detail: POST tools/list returns 401 with an RFC 9728 WWW-Authenticate challenge.
+    tools: 12
+  graphql:
+    present: false
+crosswalk:
+- tool: search_insights
+  category: product-intelligence
+  rest:
+  - listInsights
+  binding: GET /insights
+  confidence: high
+  note: >-
+    Same resource and overlapping filters (customer_id, category, severity, feature_area,
+    date_from/date_to, limit, offset). The MCP tool additionally exposes emotion, country,
+    industry, is_deal_blocker and is_churn_risk, and a relevance/severity/frustration sort;
+    the REST operation exposes q, product scope ids and the updated_since/cursor incremental
+    export the tool does not.
+- tool: get_insight
+  category: product-intelligence
+  rest:
+  - getInsight
+  binding: GET /insights/{id}
+  confidence: high
+- tool: search_opportunities
+  category: themes
+  rest:
+  - listThemes
+  binding: GET /themes
+  confidence: high
+  note: >-
+    "Opportunity" is the legacy identifier for what the product and the REST API now call a
+    Theme; the provider says so on the Tools Reference. Both expose status filtering and a
+    ric_score sort.
+- tool: get_opportunity
+  category: themes
+  rest:
+  - getTheme
+  binding: GET /themes/{id}
+  confidence: high
+  note: Both return severity breakdown, affected customers, supporting insights and the
+    buildable Features under the Theme.
+- tool: search_customers
+  category: customer-intelligence
+  rest:
+  - GET /customers
+  binding: GET /customers
+  confidence: high
+  note: The REST operation carries no operationId in the published spec; the overlay adds
+    listCustomers.
+- tool: get_customer
+  category: customer-intelligence
+  rest:
+  - GET /customers/{id}
+  binding: GET /customers/{id}
+  confidence: high
+  note: No operationId in the published spec; the overlay adds getCustomer.
+- tool: search_signals
+  category: sales-intelligence
+  rest:
+  - GET /context
+  binding: GET /context
+  confidence: medium
+  note: >-
+    "Signals" is the MCP name for what the REST API calls Context -- the same churn_reason /
+    competitor_mention / satisfaction record set, filterable by customer_id, type and date.
+    The MCP tool adds competitor_name and a free-text query the REST list does not document.
+- tool: get_signal
+  category: sales-intelligence
+  rest: []
+  binding: none
+  confidence: low
+  note: >-
+    The REST surface publishes no GET /context/{id}. get_signal returns a single context
+    record with its source URL, and there is no public REST equivalent. Listed here rather
+    than in mcp_only because it reads the same entity the /context list returns.
+- tool: get_competitors
+  category: sales-intelligence
+  rest:
+  - GET /competitors
+  binding: GET /competitors
+  confidence: high
+  note: Both return the configured competitor list with mention counts and direct-competitor
+    flag. No operationId in the published spec; the overlay adds listCompetitors.
+- tool: get_facets
+  category: overview-discovery
+  rest:
+  - GET /facets
+  binding: GET /facets
+  confidence: high
+  note: >-
+    Partial. REST /facets is documented as categories, severities and sources over the full
+    dataset; the MCP tool additionally offers feature_area, emotion, country and industry
+    dimensions and accepts a date window.
+- tool: get_trends
+  category: overview-discovery
+  rest:
+  - GET /trends
+  binding: GET /trends
+  confidence: high
+  note: Both return a zero-filled time series over a window. The MCP tool exposes a topic
+    query and granularity enum; REST documents a metric and window.
+- tool: get_overview
+  category: overview-discovery
+  rest:
+  - GET /facets
+  - GET /trends
+  - GET /coverage
+  binding: composite
+  confidence: low
+  note: >-
+    No single REST operation returns the overview. Its documented payload (total insights,
+    deal blockers, churn risks, top categories) is a server-side rollup that a REST client
+    would have to assemble from /facets, /trends and /coverage.
+mcp_only:
+- tool: get_signal
+  reason: No public GET /context/{id} operation exists in the /v1 spec.
+- tool: get_overview
+  reason: Server-side composite rollup with no backing REST operation.
+rest_only:
+- operation: listProducts
+  binding: GET /products
+  reason: Product vocabulary is not exposed as an MCP tool; the MCP surface takes feature_area
+    as a free string instead of a product-scope id.
+- operation: listAreas
+  binding: GET /areas
+  reason: No MCP tool lists product and feature areas.
+- operation: listFeatures
+  binding: GET /features
+  reason: >-
+    Buildable Features are reachable through get_opportunity (which returns the Features under
+    a Theme) but have no dedicated MCP search tool.
+- operation: getFeature
+  binding: GET /features/{id}
+  reason: No MCP tool retrieves one Feature.
+- operation: getCoverage
+  binding: GET /coverage
+  reason: Evidence-sufficiency check has no MCP tool.
+- operation: GET /competitors/mentions
+  binding: GET /competitors/mentions
+  reason: >-
+    Verbatim competitor mentions are reachable in MCP only indirectly, via
+    search_signals(type=competitor_mention, competitor_name=...).
+- operation: GET /integrations
+  binding: GET /integrations
+  reason: Integration inventory is REST-only.
+- operation: GET /integrations/{id}
+  binding: GET /integrations/{id}
+  reason: Integration detail is REST-only.
+- operation: GET /usage
+  binding: GET /usage
+  reason: Credit-consumption records are REST-only; there is no MCP billing tool.
+- operation: GET /health
+  binding: GET /health
+  reason: Public unauthenticated liveness check; no MCP equivalent and none needed.
+coverage:
+  mcp_tools: 12
+  mcp_tools_bound_to_rest: 10
+  mcp_tools_unbound: 2
+  rest_operations: 20
+  rest_operations_bound: 10
+  rest_operations_unbound: 10
+  high_confidence_bindings: 8
+  medium_confidence_bindings: 1
+  low_confidence_bindings: 2

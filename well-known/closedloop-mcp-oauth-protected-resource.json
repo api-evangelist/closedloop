@@ -1,0 +1,1 @@
+{"resource":"https://mcp.closedloop.sh","authorization_servers":["https://mcp.closedloop.sh"],"scopes_supported":["mcp:tools","mcp:read"],"bearer_methods_supported":["header"]}

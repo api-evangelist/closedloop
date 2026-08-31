@@ -1,0 +1,118 @@
+generated: '2026-08-30'
+method: searched
+source: https://closedloop.sh/pricing
+source_status: 200
+secondary_source: https://closedloop.sh/docs/account/billing
+currency: USD
+billing_period: month
+model: usage-based-credits
+model_note: >-
+  Priced on processed volume, not seats. Every plan includes unlimited team members and unlimited
+  MCP access. The provider's own docs add that plan names, prices and limits are loaded dynamically
+  in the app and that the values in Settings > Plan & billing are authoritative and may differ by
+  workspace or contract -- so the tiers below are the published list price, not necessarily a given
+  workspace's terms.
+unit:
+  name: credit
+  definition: 1 credit = 20 characters of processed input
+  published_guide:
+  - source: call (Gong / Fireflies / Google Meet)
+    approx_credits: 2000
+  - source: support ticket (Zendesk / Intercom / HubSpot)
+    approx_credits: 10
+  - source: chat message (Slack / Discord)
+    approx_credits: 3
+  - source: survey response (Typeform / Jotform)
+    approx_credits: 10
+plans:
+- name: Free
+  price: 0
+  currency: USD
+  period: month
+  included_quota:
+    credits: 100000
+    period: month
+  overage: none
+  overage_note: Free forever, no credit card. The 100,000-credit monthly cap is the only limit.
+  limits:
+    team_members: unlimited
+    mcp_access: unlimited
+    integrations: 44
+    data_regions: [us, eu]
+  included:
+  - 100,000 credits every month
+  - All 44 native integrations
+  - AI product-insight extraction
+  - Insights with cited evidence
+  - Unlimited team members
+  - Personalized onboarding
+  - Unlimited MCP access
+  - Read-only connections
+  - SOC 2 Type II
+  excluded:
+  - Priority support
+  - Volume discounts
+  - Custom integrations
+  - SSO and SAML
+  - SLA and on-premise options
+  - Dedicated account manager
+- name: Pay as you go
+  price: 0
+  price_note: $0 monthly base; charged on usage beyond the free 100,000 credits
+  currency: USD
+  period: month
+  recommended: true
+  included_quota:
+    credits: 100000
+    period: month
+  overage: usage-based
+  overage_rates:
+  - band: first 100K credits / month
+    price_per_credit: 0
+  - band: up to 1M credits / month
+    price_per_credit: 0.000245
+  - band: up to 5M credits / month
+    price_per_credit: 0.000225
+  - band: up to 10M credits / month
+    price_per_credit: 0.000200
+  - band: 10M credits / month and up
+    price_per_credit: 0.000160
+  limits:
+    team_members: unlimited
+    seats_charged: 0
+    monthly_credit_cap: none
+    mcp_access: unlimited
+  included:
+  - Everything in Free
+  - No monthly credit cap
+  - Volume discounts as you grow
+  - Priority support
+  excluded:
+  - Custom integrations
+  - SSO and SAML
+  - SLA and on-premise options
+  - Dedicated account manager
+- name: Enterprise
+  price: null
+  price_note: Custom -- "Contact sales". No published price.
+  currency: USD
+  period: month
+  included_quota:
+    credits: 100000
+    period: month
+  overage: volume
+  limits:
+    team_members: unlimited
+    mcp_access: unlimited
+  included:
+  - Everything in Pay as you go
+  - Custom integrations
+  - SLA and on-premise options
+  - SSO and SAML
+  - Dedicated account manager
+plan_count: 3
+free_tier: true
+free_trial: not-applicable
+free_trial_note: No trial -- the Free plan is permanent rather than time-limited.
+signup: https://app.closedloop.sh/signup
+contact_sales: https://closedloop.sh/contact

@@ -1,0 +1,28 @@
+generated: '2026-08-30'
+method: probed
+source: live DNS/TLS/HTTP probes of apis.yml + OpenAPI hosts
+hosts:
+- host: docs.closedloop.sh
+  https: true
+  tls_version: TLSv1.3
+  cert_expires: Oct  1 08:57:43 2026 GMT
+  hsts: true
+  hsts_max_age: 31536000
+- host: api.closedloop.sh
+  https: true
+  tls_version: TLSv1.3
+  cert_expires: Oct  1 08:57:43 2026 GMT
+  hsts: null
+- host: closedloop.sh
+  https: true
+  tls_version: TLSv1.3
+  cert_expires: Oct  1 08:57:43 2026 GMT
+  hsts: true
+  hsts_max_age: 31536000
+domains:
+- domain: closedloop.sh
+  dnssec: false
+  caa: []
+  spf: true
+  dmarc: true
+  dmarc_policy: quarantine

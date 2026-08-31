@@ -1,0 +1,44 @@
+generated: '2026-08-30'
+method: searched
+source: https://registry.npmjs.org/@closedloop-ai%2Fcli
+note: >-
+  A first-party CLI exists on npm but is UNDOCUMENTED -- no page under https://closedloop.sh/docs
+  mentions it, it is absent from the docs llms.txt index, and its declared source repository is
+  gone. It is recorded here because it is genuinely published and genuinely first-party, not
+  because the provider presents it as a supported surface.
+cli:
+  name: cl
+  package: '@closedloop-ai/cli'
+  registry: npm
+  version: 0.2.4
+  published: '2025-10-17'
+  official: true
+  official_basis: package author email is team@closedloop.sh
+  install:
+  - method: npm
+    command: npm install -g @closedloop-ai/cli
+  - method: npx
+    command: npx @closedloop-ai/cli
+  binary: cl
+  entrypoint: packages/cli/dist/cli.js
+  language: typescript
+  description: 'ClosedLoop AI CLI - AI-powered customer product feedback analysis tool (npm package
+    description, verbatim)'
+  keywords: [cli, command-line, ai, feedback, analysis, closedloop, typescript, customer-feedback,
+    product-insights, ai-analysis]
+  repository: https://github.com/closed-loop-ai/closedloop-cli
+  repository_status: 404
+  documentation: null
+commands:
+  captured: false
+  reason: >-
+    NOT RECORDED. The command surface could not be read without installing and executing the
+    package, and no published documentation, README or source repository describes it. Recording a
+    guessed command tree would be fabrication. An honest gap.
+status: undocumented-published
+currency:
+  last_release: '2025-10-17'
+  api_spec_version_at_capture: 1.8.0
+  assessment: >-
+    The CLI's last release predates the API version this repo captured by roughly ten months and it
+    is still on 0.2.x. Treat as stale.
