@@ -9,6 +9,17 @@ created: '2026-08-30'
 modified: '2026-08-30'
 specificationVersion: '0.21'
 tags:
+- Product Intelligence
+- Customer Feedback
+- Voice of Customer
+- Product Management
+- Agentic AI
+- MCP
+- SaaS analytics
+- A2A
+- SCIM
+- Product Discovery
+tags_raw:
 - product intelligence
 - customer feedback
 - voice-of-customer
@@ -27,6 +38,14 @@ apis:
   humanURL: https://docs.closedloop.sh/api-reference/introduction
   baseURL: https://api.closedloop.sh/v1
   tags:
+  - Product Intelligence
+  - Customer Feedback
+  - Voice of Customer
+  - Product Management
+  - Agentic AI
+  - MCP
+  - SaaS analytics
+  tags_raw:
   - product intelligence
   - customer feedback
   - voice-of-customer
@@ -77,6 +96,14 @@ apis:
   humanURL: https://closedloop.sh/docs/mcp-server/overview
   baseURL: https://mcp.closedloop.sh
   tags:
+  - Product Intelligence
+  - Customer Feedback
+  - Voice of Customer
+  - Product Management
+  - Agentic AI
+  - MCP
+  - SaaS analytics
+  tags_raw:
   - product intelligence
   - customer feedback
   - voice-of-customer
@@ -116,6 +143,14 @@ apis:
   humanURL: https://closedloop.sh/docs/skills/overview
   baseURL: https://closedloop.sh/docs/skills/overview
   tags:
+  - Product Intelligence
+  - Customer Feedback
+  - Voice of Customer
+  - Product Management
+  - Agentic AI
+  - MCP
+  - SaaS analytics
+  tags_raw:
   - product intelligence
   - customer feedback
   - voice-of-customer
