@@ -193,6 +193,8 @@ generated:
   confidence: 93
   at: '2026-08-30T13:57:07.826Z'
 common:
+- type: Website
+  url: https://www.closedloop.sh/
 - type: DeveloperPortal
   url: https://closedloop.sh/docs
   description: HTTP 200 verified 2026-08-30.
