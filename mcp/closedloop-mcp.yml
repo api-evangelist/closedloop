@@ -1,28 +1,30 @@
 generated: '2026-08-30'
 method: probed
-source: https://closedloop.sh/docs/mcp-server/overview + https://closedloop.sh/docs/mcp-server/tools
-  + live POST tools/list against every advertised endpoint
+source: https://closedloop.sh/docs/mcp-server/overview + https://closedloop.sh/docs/mcp-server/tools +
+  live POST tools/list against every advertised endpoint
 name: ClosedLoop AI MCP Server
-description: >-
-  First-party hosted MCP server over Streamable HTTP with OAuth 2.1. Two regional deployments (US and
-  EU). Exposes product-intelligence tools over the same data the /v1 REST API reads, plus one MCP
-  prompt. Documented for Claude Code, Claude Desktop/web/Cowork, Cursor, LiteLLM and any MCP HTTP
-  client; machine-to-machine access uses OAuth client_credentials with private_key_jwt or a shared
-  secret.
+description: First-party hosted MCP server over Streamable HTTP with OAuth 2.1. Two regional deployments
+  (US and EU). Exposes product-intelligence tools over the same data the /v1 REST API reads, plus one
+  MCP prompt. Documented for Claude Code, Claude Desktop/web/Cowork, Cursor, LiteLLM and any MCP HTTP
+  client; machine-to-machine access uses OAuth client_credentials with private_key_jwt or a shared secret.
 deployment:
   mode: remote
   endpoint: https://mcp.closedloop.sh
   auth: oauth
   verified: probed
-  note: >-
-    THE PATH IS THE HOST ROOT. POSTing JSON-RPC to https://mcp.closedloop.sh returns the MCP OAuth
-    challenge; https://mcp.closedloop.sh/mcp returns 404 ROUTE_NOT_FOUND. The provider's own docs
-    give the bare host to `claude mcp add --transport http`, which agrees. A second live MCP endpoint
-    also answers at https://api.closedloop.sh/mcp with its own OAuth metadata (issuer
-    https://api.closedloop.sh/mcp) -- it is undocumented and is recorded below, not advertised.
-    ClosedLoop AI also publishes an npm package @closedloop-ai/mcp-client (1.5.0, 2026-02-22, bin
-    `closedloop-mcp`) which no current documentation page references; because the documented and
-    probed product is the hosted URL, mode is `remote`, not `both`. See packages/.
+  note: THE PATH IS THE HOST ROOT. POSTing JSON-RPC to https://mcp.closedloop.sh returns the MCP OAuth
+    challenge; https://mcp.closedloop.sh/mcp returns 404 ROUTE_NOT_FOUND. The provider's own docs give
+    the bare host to `claude mcp add --transport http`, which agrees. A second live MCP endpoint also
+    answers at https://api.closedloop.sh/mcp with its own OAuth metadata (issuer https://api.closedloop.sh/mcp)
+    -- it is undocumented and is recorded below, not advertised. ClosedLoop AI also publishes an npm package
+    @closedloop-ai/mcp-client (1.5.0, 2026-02-22, bin `closedloop-mcp`) which no current documentation
+    page references; because the documented and probed product is the hosted URL, mode is `remote`, not
+    `both`. See packages/.
+  probe_prior: (never probed)
+  probe: gated
+  probe_why: RFC 9728 challenge on the MCP path only
+  checked: '2026-09-11'
+  source: claimed-backlog re-probe 2026-09-11
 endpoints:
 - region: us
   url: https://mcp.closedloop.sh
@@ -50,13 +52,13 @@ endpoints:
     status: 401
     www_authenticate: Bearer resource_metadata="https://api.closedloop.sh/mcp/.well-known/oauth-protected-resource"
     rfc9728_compliant: true
-  note: Undocumented but live. OAuth issuer is https://api.closedloop.sh/mcp, distinct from the
-    mcp.closedloop.sh issuer.
+  note: Undocumented but live. OAuth issuer is https://api.closedloop.sh/mcp, distinct from the mcp.closedloop.sh
+    issuer.
 - region: us
   url: https://mcp.closedloop.sh/mcp
   status: 404
-  note: NOT an endpoint. Returns {"error":"Route not found","code":"ROUTE_NOT_FOUND"}. Recorded so a
-    later run does not re-guess the conventional /mcp suffix.
+  note: NOT an endpoint. Returns {"error":"Route not found","code":"ROUTE_NOT_FOUND"}. Recorded so a later
+    run does not re-guess the conventional /mcp suffix.
 authorization:
   model: oauth2.1
   dynamic_client_registration: true
@@ -84,27 +86,28 @@ authorization:
   - ../well-known/closedloop-mcp-oauth-authorization-server.json
   - ../well-known/closedloop-mcp-oauth-protected-resource.json
   m2m_docs: https://closedloop.sh/docs/account/mcp-service-clients
-  note: >-
-    Regular /v1 REST API keys DO NOT work with MCP -- the provider states this explicitly. MCP
-    requires an OAuth service client.
+  note: Regular /v1 REST API keys DO NOT work with MCP -- the provider states this explicitly. MCP requires
+    an OAuth service client.
 tools_source:
   method: searched
   url: https://closedloop.sh/docs/mcp-server/tools
   live_schema_available: false
-  live_schema_note: >-
-    tools/list is OAuth-gated, so the machine inputSchema could not be read anonymously. The tools
-    and parameters below are transcribed from the provider's own published Tools Reference, which
-    documents every parameter with type, default and enum. Full JSON Schemas would need authenticated
+  live_schema_note: tools/list is OAuth-gated, so the machine inputSchema could not be read anonymously.
+    The tools and parameters below are transcribed from the provider's own published Tools Reference,
+    which documents every parameter with type, default and enum. Full JSON Schemas would need authenticated
     introspection.
 tools:
 - name: get_overview
   category: overview-discovery
-  description: High-level summary of the product-intelligence landscape. Documented as the starting
-    point.
+  description: High-level summary of the product-intelligence landscape. Documented as the starting point.
   parameters:
   - name: time_range
     type: enum
-    enum: [7d, 30d, 90d, all]
+    enum:
+    - 7d
+    - 30d
+    - 90d
+    - all
     default: 30d
   returns: total insights, deal blockers, churn risks, top categories
 - name: get_facets
@@ -114,7 +117,13 @@ tools:
   - name: dimensions
     type: array
     required: true
-    enum: [category, severity, feature_area, emotion, country, industry]
+    enum:
+    - category
+    - severity
+    - feature_area
+    - emotion
+    - country
+    - industry
   - name: date_from
     type: string
   - name: date_to
@@ -132,7 +141,10 @@ tools:
     type: string
   - name: granularity
     type: enum
-    enum: [daily, weekly, monthly]
+    enum:
+    - daily
+    - weekly
+    - monthly
     default: weekly
   - name: date_from
     type: string
@@ -142,8 +154,8 @@ tools:
     default: today
 - name: search_customers
   category: customer-intelligence
-  description: Find customers by name, industry, country or engagement metrics; every result carries
-    revenue context.
+  description: Find customers by name, industry, country or engagement metrics; every result carries revenue
+    context.
   parameters:
   - name: query
     type: string
@@ -161,7 +173,12 @@ tools:
     type: integer
   - name: sort
     type: enum
-    enum: [insight_count, deal_value, frustration, recency, name]
+    enum:
+    - insight_count
+    - deal_value
+    - frustration
+    - recency
+    - name
     default: insight_count
   - name: limit
     type: integer
@@ -172,16 +189,15 @@ tools:
     default: 0
 - name: get_customer
   category: customer-intelligence
-  description: Full customer profile -- CRM data, deals, contacts, intelligence summary, strategic
-    context.
+  description: Full customer profile -- CRM data, deals, contacts, intelligence summary, strategic context.
   parameters:
   - name: id
     type: string
     required: true
 - name: search_insights
   category: product-intelligence
-  description: Hybrid (keyword + semantic) search across product insights; returns 300-character
-    content previews and a customers_mentioned summary.
+  description: Hybrid (keyword + semantic) search across product insights; returns 300-character content
+    previews and a customers_mentioned summary.
   parameters:
   - name: query
     type: string
@@ -189,11 +205,24 @@ tools:
     type: string
   - name: category
     type: enum
-    enum: [bug, feature request, improvement, integration issue, missing functionality, ux/ui issue,
-      documentation, performance issue, security issue, reporting]
+    enum:
+    - bug
+    - feature request
+    - improvement
+    - integration issue
+    - missing functionality
+    - ux/ui issue
+    - documentation
+    - performance issue
+    - security issue
+    - reporting
   - name: severity
     type: enum
-    enum: [Critical, High, Medium, Low]
+    enum:
+    - Critical
+    - High
+    - Medium
+    - Low
   - name: is_deal_blocker
     type: boolean
   - name: is_churn_risk
@@ -212,7 +241,11 @@ tools:
     type: string
   - name: sort
     type: enum
-    enum: [relevance, severity, frustration, recency]
+    enum:
+    - relevance
+    - severity
+    - frustration
+    - recency
     default: relevance
   - name: limit
     type: integer
@@ -223,23 +256,28 @@ tools:
     default: 0
 - name: get_insight
   category: product-intelligence
-  description: Full detail for one insight -- verbatim content, pain point, workaround, use case,
-    business outcomes, kano category, reporter details.
+  description: Full detail for one insight -- verbatim content, pain point, workaround, use case, business
+    outcomes, kano category, reporter details.
   parameters:
   - name: id
     type: string
     required: true
 - name: search_signals
   category: sales-intelligence
-  description: Search strategic context -- satisfaction, churn reasons, competitor mentions, buying
-    behavior.
+  description: Search strategic context -- satisfaction, churn reasons, competitor mentions, buying behavior.
   parameters:
   - name: query
     type: string
   - name: type
     type: string
-    documented_values: [satisfaction, churn_reason, competitor_mention, decision_criteria,
-      purchase_hesitation, win_reason, onboarding_friction]
+    documented_values:
+    - satisfaction
+    - churn_reason
+    - competitor_mention
+    - decision_criteria
+    - purchase_hesitation
+    - win_reason
+    - onboarding_friction
   - name: customer_id
     type: string
   - name: competitor_name
@@ -250,7 +288,9 @@ tools:
     type: string
   - name: sort
     type: enum
-    enum: [relevance, recency]
+    enum:
+    - relevance
+    - recency
     default: relevance
   - name: limit
     type: integer
@@ -261,34 +301,46 @@ tools:
     default: 0
 - name: get_signal
   category: sales-intelligence
-  description: Full detail for one context record, including source URL back to the original
-    conversation.
+  description: Full detail for one context record, including source URL back to the original conversation.
   parameters:
   - name: id
     type: string
     required: true
 - name: get_competitors
   category: sales-intelligence
-  description: Configured competitors with mention counts, products, and whether each is a direct
-    competitor. No parameters.
+  description: Configured competitors with mention counts, products, and whether each is a direct competitor.
+    No parameters.
   parameters: []
 - name: search_opportunities
   category: themes
-  description: Biggest Themes ranked by business impact. Tool name retains the legacy
-    "opportunities" identifier for compatibility.
+  description: Biggest Themes ranked by business impact. Tool name retains the legacy "opportunities"
+    identifier for compatibility.
   parameters:
   - name: query
     type: string
   - name: status
     type: enum
-    enum: [active, new, declined, all]
+    enum:
+    - active
+    - new
+    - declined
+    - all
     default: active
   - name: velocity_status
     type: enum
-    enum: [accelerating, active, cooling, dormant]
+    enum:
+    - accelerating
+    - active
+    - cooling
+    - dormant
   - name: sort
     type: enum
-    enum: [ric_score, signal_count, customer_count, deal_blocker_count, recency]
+    enum:
+    - ric_score
+    - signal_count
+    - customer_count
+    - deal_blocker_count
+    - recency
     default: ric_score
   - name: min_signals
     type: integer
@@ -304,8 +356,8 @@ tools:
     default: 0
 - name: get_opportunity
   category: themes
-  description: Full Theme detail -- top 50 quotes, customer list with IDs and deal values,
-    total_won_deal_value, and associated Features.
+  description: Full Theme detail -- top 50 quotes, customer list with IDs and deal values, total_won_deal_value,
+    and associated Features.
   parameters:
   - name: id
     type: string
