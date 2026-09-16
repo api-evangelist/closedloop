@@ -309,6 +309,8 @@ common:
 - type: LLMsTxt
   url: https://closedloop.sh/docs/llms.txt
   description: HTTP 200 verified 2026-08-30.
+- type: Contact
+  url: mailto:hello@closedloop.sh
 image: https://closedloop.sh/assets/images/og-image.png
 x-enrichment:
   date: '2026-08-30'
