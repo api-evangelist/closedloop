@@ -47,12 +47,14 @@ tags_raw:
 - SCIM
 - product discovery
 apis:
-- name: ClosedLoop AI REST API
-  description: Read-only /v1 REST API, team- and region-scoped, authenticated via X-API-Key. Exposes insights, products, themes,
-    features, coverage/evidence, customers, customer context, competitors, trends, facets, integrations, usage/credits, and
-    a public health check. Feedback is ingested via integrations, not written through this API.
-  humanURL: https://docs.closedloop.sh/api-reference/introduction
-  baseURL: https://api.closedloop.sh/v1
+- name: ClosedLoop AI MCP Server
+  description: >-
+    Hosted, first-class MCP server over HTTP with OAuth auth (interactive auto-registration or client_credentials
+    for M2M). Ships MCP tools (query insights, context, customers, themes, competitors) and a 'prd' prompt/slash
+    command. Works with Claude Code, Claude Desktop/web/Cowork, Cursor, LiteLLM, or any MCP-compatible
+    client. US endpoint https://mcp.closedloop.sh, EU endpoint https://eu.mcp.closedloop.sh.
+  humanURL: https://closedloop.sh/docs/mcp-server/overview
+  baseURL: https://mcp.closedloop.sh
   tags:
   - Product Intelligence
   - Customer Feedback
@@ -70,18 +72,77 @@ apis:
   - MCP
   - SaaS analytics
   properties:
+  - type: MCPServer
+    url: mcp/closedloop-mcp.yml
+    description: >-
+      Hosted remote MCP over Streamable HTTP with OAuth 2.1. deployment.mode=remote, endpoint https://mcp.closedloop.sh
+      (EU: https://eu.mcp.closedloop.sh). Verified by probe 2026-08-30: POST tools/list returns 401 with
+      an RFC 9728 WWW-Authenticate challenge. 12 tools transcribed from the provider Tools Reference.
+  - type: MCPServer
+    url: https://mcp.closedloop.sh
+    description: >-
+      LIVE MCP, OAuth-gated. NOTE the path -- the endpoint is the HOST ROOT; https://mcp.closedloop.sh/mcp
+      returns 404 ROUTE_NOT_FOUND. Verified 2026-08-30.
+  - type: MCPServer
+    url: https://eu.mcp.closedloop.sh
+    description: EU regional MCP endpoint. Verified 2026-08-30, same 401 OAuth challenge.
+  - type: ToolCrosswalk
+    url: mcp/closedloop-tool-crosswalk.yml
+    description: >-
+      Binds each of the 12 MCP tools to its backing /v1 operation. 10 of 12 tools bind to REST; 10 of
+      20 REST operations have no tool.
+  - type: OAuthScopes
+    url: scopes/closedloop-scopes.yml
+  - type: Documentation
+    url: https://closedloop.sh/docs/mcp-server/overview
+  - type: Documentation
+    url: https://closedloop.sh/docs/mcp-server/tools
+  - type: Documentation
+    url: https://closedloop.sh/docs/account/mcp-service-clients
+- name: ClosedLoop AI Claude Code Skills
+  description: >-
+    Set of ~25 pre-built Claude Code skills distributed as the 'closedloop-skills' plugin via the Anthropic
+    community marketplace, grouped by team (product/eng/sales/marketing/CS/leadership). Examples: Deep
+    Dive, PM Prep, Scope Guard, Synthetic Customer, Competitor Gap, Bug Blast Radius, Weekly Brief, Ship
+    Notify, Case Study Scout.
+  humanURL: https://closedloop.sh/docs/skills/overview
+  baseURL: https://closedloop.sh/docs/skills/overview
+  tags:
+  - Product Intelligence
+  - Customer Feedback
+  - Voice of Customer
+  - Product Management
+  - Agentic AI
+  - MCP
+  - SaaS analytics
+  tags_raw:
+  - product intelligence
+  - customer feedback
+  - voice-of-customer
+  - product management
+  - agentic AI
+  - MCP
+  - SaaS analytics
+  properties:
+  - type: AgentSkill
+    url: skills/_index.yml
+    description: >-
+      One provider-published Agent Skill saved verbatim from https://closedloop.sh/docs/.well-known/agent-skills/closedloopai/skill.md
+      (HTTP 200), plus three API Evangelist skills grounded in real operationIds.
+  - type: AgentSkill
+    url: https://closedloop.sh/docs/skills/overview
+  - type: Documentation
+    url: https://closedloop.sh/docs/skills/overview
+- aid: closedloop:closedloop-analytics-api
+  name: ClosedLoop AI Analytics API
+  description: Trends, cohorts and facet counts over the full dataset.
+  humanURL: https://docs.closedloop.sh/api-reference/introduction
+  baseURL: https://api.closedloop.sh/v1
+  tags:
+  - Analytics
+  properties:
   - type: OpenAPI
-    url: openapi/closedloop-public-api-openapi.yaml
-    description: 'ClosedLoop AI Public API v1.8.0, OpenAPI 3.0.3, 20 GET operations. Fetched verbatim 2026-08-30 from https://closedloop.sh/docs/api-reference/openapi.yaml
-      (HTTP 200). Ownership confirmed: info.title "ClosedLoop AI Public API", contact support@closedloop.sh, license "Proprietary
-      (ClosedLoop Labs LLC)", servers api.closedloop.sh/v1 and eu.api.closedloop.sh/v1.'
-  - type: OpenAPI
-    url: https://closedloop.sh/docs/api-reference/openapi.yaml
-    description: Provider-hosted spec, HTTP 200 verified 2026-08-30.
-  - type: Overlay
-    url: overlays/closedloop-public-api-overlay.yaml
-    description: OpenAPI Overlay 1.0.0 supplying the 11 missing operationIds and reconciling two spec/docs disagreements.
-      The original spec is never mutated.
+    url: openapi/closedloop-analytics-api-openapi.yml
   - type: Documentation
     url: https://closedloop.sh/docs/api-reference/introduction
   - type: APIReference
@@ -104,85 +165,347 @@ apis:
     url: llms/closedloop-llms.txt
   - type: LLMsTxt
     url: https://closedloop.sh/docs/llms.txt
-- name: ClosedLoop AI MCP Server
-  description: Hosted, first-class MCP server over HTTP with OAuth auth (interactive auto-registration or client_credentials
-    for M2M). Ships MCP tools (query insights, context, customers, themes, competitors) and a 'prd' prompt/slash command.
-    Works with Claude Code, Claude Desktop/web/Cowork, Cursor, LiteLLM, or any MCP-compatible client. US endpoint https://mcp.closedloop.sh,
-    EU endpoint https://eu.mcp.closedloop.sh.
-  humanURL: https://closedloop.sh/docs/mcp-server/overview
-  baseURL: https://mcp.closedloop.sh
+- aid: closedloop:closedloop-competitors-api
+  name: ClosedLoop AI Competitors API
+  description: >-
+    Competitive pressure derived from your customers' own words. Competitors with a
+
+    **mention trend over time** (not a static total), and a searchable feed of the exact
+
+    mentions, each showing the customer behind it.
+  humanURL: https://docs.closedloop.sh/api-reference/introduction
+  baseURL: https://api.closedloop.sh/v1
   tags:
-  - Product Intelligence
-  - Customer Feedback
-  - Voice of Customer
-  - Product Management
-  - Agentic AI
-  - MCP
-  - SaaS analytics
-  tags_raw:
-  - product intelligence
-  - customer feedback
-  - voice-of-customer
-  - product management
-  - agentic AI
-  - MCP
-  - SaaS analytics
+  - Competitors
   properties:
-  - type: MCPServer
-    url: mcp/closedloop-mcp.yml
-    description: 'Hosted remote MCP over Streamable HTTP with OAuth 2.1. deployment.mode=remote, endpoint https://mcp.closedloop.sh
-      (EU: https://eu.mcp.closedloop.sh). Verified by probe 2026-08-30: POST tools/list returns 401 with an RFC 9728 WWW-Authenticate
-      challenge. 12 tools transcribed from the provider Tools Reference.'
-  - type: MCPServer
-    url: https://mcp.closedloop.sh
-    description: LIVE MCP, OAuth-gated. NOTE the path -- the endpoint is the HOST ROOT; https://mcp.closedloop.sh/mcp returns
-      404 ROUTE_NOT_FOUND. Verified 2026-08-30.
-  - type: MCPServer
-    url: https://eu.mcp.closedloop.sh
-    description: EU regional MCP endpoint. Verified 2026-08-30, same 401 OAuth challenge.
-  - type: ToolCrosswalk
-    url: mcp/closedloop-tool-crosswalk.yml
-    description: Binds each of the 12 MCP tools to its backing /v1 operation. 10 of 12 tools bind to REST; 10 of 20 REST operations
-      have no tool.
-  - type: OAuthScopes
-    url: scopes/closedloop-scopes.yml
+  - type: OpenAPI
+    url: openapi/closedloop-competitors-api-openapi.yml
   - type: Documentation
-    url: https://closedloop.sh/docs/mcp-server/overview
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: APIReference
+    url: https://closedloop.sh/docs/api-reference/introduction
   - type: Documentation
-    url: https://closedloop.sh/docs/mcp-server/tools
-  - type: Documentation
-    url: https://closedloop.sh/docs/account/mcp-service-clients
-- name: ClosedLoop AI Claude Code Skills
-  description: 'Set of ~25 pre-built Claude Code skills distributed as the ''closedloop-skills'' plugin via the Anthropic
-    community marketplace, grouped by team (product/eng/sales/marketing/CS/leadership). Examples: Deep Dive, PM Prep, Scope
-    Guard, Synthetic Customer, Competitor Gap, Bug Blast Radius, Weekly Brief, Ship Notify, Case Study Scout.'
-  humanURL: https://closedloop.sh/docs/skills/overview
-  baseURL: https://closedloop.sh/docs/skills/overview
+    url: https://closedloop.sh/docs/api-reference/conventions
+  - type: Conventions
+    url: conventions/closedloop-conventions.yml
+  - type: ErrorCatalog
+    url: errors/closedloop-problem-types.yml
+  - type: DataModel
+    url: data-model/closedloop-data-model.yml
+  - type: Authentication
+    url: authentication/closedloop-authentication.yml
+  - type: RateLimits
+    url: rate-limits/closedloop-rate-limits.yml
+  - type: Lifecycle
+    url: lifecycle/closedloop-lifecycle.yml
+  - type: LLMsTxt
+    url: llms/closedloop-llms.txt
+  - type: LLMsTxt
+    url: https://closedloop.sh/docs/llms.txt
+- aid: closedloop:closedloop-context-api
+  name: ClosedLoop AI Context API
+  description: >-
+    **Customer context**, the strategic intelligence behind your customers: churn
+
+    reasons, competitive mentions, satisfaction, pricing perception and more, surfaced
+
+    from conversations. This is the `/context` surface in the app. Each record resolves
+
+    to a customer (`customer_id`), so it lines up with insights for the same customer.
+  humanURL: https://docs.closedloop.sh/api-reference/introduction
+  baseURL: https://api.closedloop.sh/v1
   tags:
-  - Product Intelligence
-  - Customer Feedback
-  - Voice of Customer
-  - Product Management
-  - Agentic AI
-  - MCP
-  - SaaS analytics
-  tags_raw:
-  - product intelligence
-  - customer feedback
-  - voice-of-customer
-  - product management
-  - agentic AI
-  - MCP
-  - SaaS analytics
+  - Context
   properties:
-  - type: AgentSkill
-    url: skills/_index.yml
-    description: One provider-published Agent Skill saved verbatim from https://closedloop.sh/docs/.well-known/agent-skills/closedloopai/skill.md
-      (HTTP 200), plus three API Evangelist skills grounded in real operationIds.
-  - type: AgentSkill
-    url: https://closedloop.sh/docs/skills/overview
+  - type: OpenAPI
+    url: openapi/closedloop-context-api-openapi.yml
   - type: Documentation
-    url: https://closedloop.sh/docs/skills/overview
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: APIReference
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/conventions
+  - type: Conventions
+    url: conventions/closedloop-conventions.yml
+  - type: ErrorCatalog
+    url: errors/closedloop-problem-types.yml
+  - type: DataModel
+    url: data-model/closedloop-data-model.yml
+  - type: Authentication
+    url: authentication/closedloop-authentication.yml
+  - type: RateLimits
+    url: rate-limits/closedloop-rate-limits.yml
+  - type: Lifecycle
+    url: lifecycle/closedloop-lifecycle.yml
+  - type: LLMsTxt
+    url: llms/closedloop-llms.txt
+  - type: LLMsTxt
+    url: https://closedloop.sh/docs/llms.txt
+- aid: closedloop:closedloop-customers-api
+  name: ClosedLoop AI Customers API
+  description: The people and accounts who gave feedback, with CRM context.
+  humanURL: https://docs.closedloop.sh/api-reference/introduction
+  baseURL: https://api.closedloop.sh/v1
+  tags:
+  - Customers
+  properties:
+  - type: OpenAPI
+    url: openapi/closedloop-customers-api-openapi.yml
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: APIReference
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/conventions
+  - type: Conventions
+    url: conventions/closedloop-conventions.yml
+  - type: ErrorCatalog
+    url: errors/closedloop-problem-types.yml
+  - type: DataModel
+    url: data-model/closedloop-data-model.yml
+  - type: Authentication
+    url: authentication/closedloop-authentication.yml
+  - type: RateLimits
+    url: rate-limits/closedloop-rate-limits.yml
+  - type: Lifecycle
+    url: lifecycle/closedloop-lifecycle.yml
+  - type: LLMsTxt
+    url: llms/closedloop-llms.txt
+  - type: LLMsTxt
+    url: https://closedloop.sh/docs/llms.txt
+- aid: closedloop:closedloop-features-api
+  name: ClosedLoop AI Features API
+  description: >-
+    **Features**: the buildable, shippable children of a theme. Filter by `theme_id`.
+
+    Same theme → features hierarchy you see on the roadmap.
+  humanURL: https://docs.closedloop.sh/api-reference/introduction
+  baseURL: https://api.closedloop.sh/v1
+  tags:
+  - Features
+  properties:
+  - type: OpenAPI
+    url: openapi/closedloop-features-api-openapi.yml
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: APIReference
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/conventions
+  - type: Conventions
+    url: conventions/closedloop-conventions.yml
+  - type: ErrorCatalog
+    url: errors/closedloop-problem-types.yml
+  - type: DataModel
+    url: data-model/closedloop-data-model.yml
+  - type: Authentication
+    url: authentication/closedloop-authentication.yml
+  - type: RateLimits
+    url: rate-limits/closedloop-rate-limits.yml
+  - type: Lifecycle
+    url: lifecycle/closedloop-lifecycle.yml
+  - type: LLMsTxt
+    url: llms/closedloop-llms.txt
+  - type: LLMsTxt
+    url: https://closedloop.sh/docs/llms.txt
+- aid: closedloop:closedloop-insights-api
+  name: ClosedLoop AI Insights API
+  description: >-
+    Individual **product insights**: structured, AI-processed feedback items
+
+    (pain point, severity, workaround, competitor gap, evidence).
+  humanURL: https://docs.closedloop.sh/api-reference/introduction
+  baseURL: https://api.closedloop.sh/v1
+  tags:
+  - Insights
+  properties:
+  - type: OpenAPI
+    url: openapi/closedloop-insights-api-openapi.yml
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: APIReference
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/conventions
+  - type: Conventions
+    url: conventions/closedloop-conventions.yml
+  - type: ErrorCatalog
+    url: errors/closedloop-problem-types.yml
+  - type: DataModel
+    url: data-model/closedloop-data-model.yml
+  - type: Authentication
+    url: authentication/closedloop-authentication.yml
+  - type: RateLimits
+    url: rate-limits/closedloop-rate-limits.yml
+  - type: Lifecycle
+    url: lifecycle/closedloop-lifecycle.yml
+  - type: LLMsTxt
+    url: llms/closedloop-llms.txt
+  - type: LLMsTxt
+    url: https://closedloop.sh/docs/llms.txt
+- aid: closedloop:closedloop-integrations-api
+  name: ClosedLoop AI Integrations API
+  description: Connected data sources for your team.
+  humanURL: https://docs.closedloop.sh/api-reference/introduction
+  baseURL: https://api.closedloop.sh/v1
+  tags:
+  - Integrations
+  properties:
+  - type: OpenAPI
+    url: openapi/closedloop-integrations-api-openapi.yml
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: APIReference
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/conventions
+  - type: Conventions
+    url: conventions/closedloop-conventions.yml
+  - type: ErrorCatalog
+    url: errors/closedloop-problem-types.yml
+  - type: DataModel
+    url: data-model/closedloop-data-model.yml
+  - type: Authentication
+    url: authentication/closedloop-authentication.yml
+  - type: RateLimits
+    url: rate-limits/closedloop-rate-limits.yml
+  - type: Lifecycle
+    url: lifecycle/closedloop-lifecycle.yml
+  - type: LLMsTxt
+    url: llms/closedloop-llms.txt
+  - type: LLMsTxt
+    url: https://closedloop.sh/docs/llms.txt
+- aid: closedloop:closedloop-meta-api
+  name: ClosedLoop AI Meta API
+  description: Service metadata.
+  humanURL: https://docs.closedloop.sh/api-reference/introduction
+  baseURL: https://api.closedloop.sh/v1
+  tags:
+  - Meta
+  properties:
+  - type: OpenAPI
+    url: openapi/closedloop-meta-api-openapi.yml
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: APIReference
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/conventions
+  - type: Conventions
+    url: conventions/closedloop-conventions.yml
+  - type: ErrorCatalog
+    url: errors/closedloop-problem-types.yml
+  - type: DataModel
+    url: data-model/closedloop-data-model.yml
+  - type: Authentication
+    url: authentication/closedloop-authentication.yml
+  - type: RateLimits
+    url: rate-limits/closedloop-rate-limits.yml
+  - type: Lifecycle
+    url: lifecycle/closedloop-lifecycle.yml
+  - type: LLMsTxt
+    url: llms/closedloop-llms.txt
+  - type: LLMsTxt
+    url: https://closedloop.sh/docs/llms.txt
+- aid: closedloop:closedloop-products-api
+  name: ClosedLoop AI Products API
+  description: The current product, product-area, and feature-area vocabulary for the team.
+  humanURL: https://docs.closedloop.sh/api-reference/introduction
+  baseURL: https://api.closedloop.sh/v1
+  tags:
+  - Products
+  properties:
+  - type: OpenAPI
+    url: openapi/closedloop-products-api-openapi.yml
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: APIReference
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/conventions
+  - type: Conventions
+    url: conventions/closedloop-conventions.yml
+  - type: ErrorCatalog
+    url: errors/closedloop-problem-types.yml
+  - type: DataModel
+    url: data-model/closedloop-data-model.yml
+  - type: Authentication
+    url: authentication/closedloop-authentication.yml
+  - type: RateLimits
+    url: rate-limits/closedloop-rate-limits.yml
+  - type: Lifecycle
+    url: lifecycle/closedloop-lifecycle.yml
+  - type: LLMsTxt
+    url: llms/closedloop-llms.txt
+  - type: LLMsTxt
+    url: https://closedloop.sh/docs/llms.txt
+- aid: closedloop:closedloop-themes-api
+  name: ClosedLoop AI Themes API
+  description: >-
+    **Themes**: top-level problem clusters of related insights, RIC-scored. The
+
+    "what should we build?" surface. Each theme rolls up one or more buildable features.
+  humanURL: https://docs.closedloop.sh/api-reference/introduction
+  baseURL: https://api.closedloop.sh/v1
+  tags:
+  - Themes
+  properties:
+  - type: OpenAPI
+    url: openapi/closedloop-themes-api-openapi.yml
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: APIReference
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/conventions
+  - type: Conventions
+    url: conventions/closedloop-conventions.yml
+  - type: ErrorCatalog
+    url: errors/closedloop-problem-types.yml
+  - type: DataModel
+    url: data-model/closedloop-data-model.yml
+  - type: Authentication
+    url: authentication/closedloop-authentication.yml
+  - type: RateLimits
+    url: rate-limits/closedloop-rate-limits.yml
+  - type: Lifecycle
+    url: lifecycle/closedloop-lifecycle.yml
+  - type: LLMsTxt
+    url: llms/closedloop-llms.txt
+  - type: LLMsTxt
+    url: https://closedloop.sh/docs/llms.txt
+- aid: closedloop:closedloop-usage-api
+  name: ClosedLoop AI Usage API
+  description: Credit consumption and usage records for billing transparency.
+  humanURL: https://docs.closedloop.sh/api-reference/introduction
+  baseURL: https://api.closedloop.sh/v1
+  tags:
+  - Usage
+  properties:
+  - type: OpenAPI
+    url: openapi/closedloop-usage-api-openapi.yml
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: APIReference
+    url: https://closedloop.sh/docs/api-reference/introduction
+  - type: Documentation
+    url: https://closedloop.sh/docs/api-reference/conventions
+  - type: Conventions
+    url: conventions/closedloop-conventions.yml
+  - type: ErrorCatalog
+    url: errors/closedloop-problem-types.yml
+  - type: DataModel
+    url: data-model/closedloop-data-model.yml
+  - type: Authentication
+    url: authentication/closedloop-authentication.yml
+  - type: RateLimits
+    url: rate-limits/closedloop-rate-limits.yml
+  - type: Lifecycle
+    url: lifecycle/closedloop-lifecycle.yml
+  - type: LLMsTxt
+    url: llms/closedloop-llms.txt
+  - type: LLMsTxt
+    url: https://closedloop.sh/docs/llms.txt
 maintainers:
 - FN: ClosedLoop AI
   email: support@closedloop.sh
@@ -193,6 +516,8 @@ generated:
   confidence: 93
   at: '2026-08-30T13:57:07.826Z'
 common:
+- type: Overlay
+  url: overlays/closedloop-public-api-overlay.yaml
 - type: Website
   url: https://www.closedloop.sh/
 - type: DeveloperPortal
