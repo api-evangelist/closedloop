@@ -349,6 +349,8 @@ apis:
   humanURL: https://docs.closedloop.sh/api-reference/introduction
   baseURL: https://api.closedloop.sh/v1
   tags:
+  - Integration
+  tags_raw:
   - Integrations
   properties:
   - type: OpenAPI
@@ -413,6 +415,8 @@ apis:
   humanURL: https://docs.closedloop.sh/api-reference/introduction
   baseURL: https://api.closedloop.sh/v1
   tags:
+  - Product
+  tags_raw:
   - Products
   properties:
   - type: OpenAPI
