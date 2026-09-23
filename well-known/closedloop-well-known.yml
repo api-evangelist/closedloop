@@ -1,14 +1,19 @@
-generated: '2026-08-30'
+generated: '2026-09-19'
 method: probed
-source: live GET of /.well-known/* on every apis.yml baseURL host, OpenAPI servers[] host,
-  and the docs/app hosts
-note: >-
-  security.txt, openid-configuration, api-catalog and ai-plugin.json are served by NO ClosedLoop AI
-  host. What IS served is the MCP OAuth pair (RFC 8414 authorization-server metadata and RFC 9728
-  protected-resource metadata) on all four API/MCP hosts, plus an A2A agent card on the docs host.
-  app.closedloop.sh answers 200 with the same SPA HTML shell for EVERY /.well-known/* path probed,
-  including paths no host should serve -- it is a catch-all, NOT a document, and is recorded here as
-  a miss so it is never mistaken for a served surface.
+source: live GET of /.well-known/* on every apis.yml baseURL host, OpenAPI servers[] host, and the docs/app
+  hosts
+note: 'security.txt, openid-configuration, api-catalog and ai-plugin.json are served by NO ClosedLoop
+  AI host. What IS served is the MCP OAuth pair (RFC 8414 authorization-server metadata and RFC 9728 protected-resource
+  metadata) on all four API/MCP hosts, plus an A2A agent card on the docs host. app.closedloop.sh answers
+  200 with the same SPA HTML shell for EVERY /.well-known/* path probed, including paths no host should
+  serve -- it is a catch-all, NOT a document, and is recorded here as a miss so it is never mistaken for
+  a served surface.
+
+
+  MCP-host OAuth discovery added 2026-09-19 (roadmap#321/#337): the harvest visits a provider''s primary
+  hosts, and RFC 9728 protected-resource metadata lives on the MCP host, so these documents existed and
+  were invisible to the scorer. Fetched live and validated on `resource`/`issuer`; one negative control
+  per host.'
 hosts:
 - host: api.closedloop.sh
   documents:
@@ -64,6 +69,7 @@ hosts:
     status: 404
   - path: /.well-known/agent-card.json
     status: 404
+  path_echo_control: passed
 - host: eu.mcp.closedloop.sh
   documents:
   - path: /.well-known/oauth-authorization-server
@@ -85,8 +91,8 @@ hosts:
   - path: /.well-known/agent-card.json
     status: 200
     file: ../a2a/closedloop-agent-card.json
-    note: A2A Agent Card, JSON object, saved verbatim under a2a/. Also served at
-      https://closedloop.sh/docs/.well-known/agent-card.json (200, byte-identical).
+    note: A2A Agent Card, JSON object, saved verbatim under a2a/. Also served at https://closedloop.sh/docs/.well-known/agent-card.json
+      (200, byte-identical).
   - path: /.well-known/security.txt
     status: 404
   - path: /.well-known/openid-configuration
@@ -130,8 +136,8 @@ hosts:
   documents:
   - path: /.well-known/security.txt
     status: 200
-    note: NOT A DOCUMENT -- SPA HTML shell. app.closedloop.sh returns the same 200 HTML for every
-      /.well-known/* path probed. Recorded as a miss.
+    note: NOT A DOCUMENT -- SPA HTML shell. app.closedloop.sh returns the same 200 HTML for every /.well-known/*
+      path probed. Recorded as a miss.
   - path: /.well-known/openid-configuration
     status: 200
     note: NOT A DOCUMENT -- same SPA catch-all shell.
@@ -147,3 +153,15 @@ hosts:
   - path: /.well-known/agent-card.json
     status: 200
     note: NOT A DOCUMENT -- same SPA catch-all shell. The REAL card is on docs.closedloop.sh.
+x-mcp-probe:
+  probed: '2026-09-19'
+  issue: roadmap#321, roadmap#337
+  documents:
+  - host: https://mcp.closedloop.sh
+    path: /.well-known/oauth-protected-resource
+    file: closedloop-mcp-oauth-protected-resource.json
+  - host: https://mcp.closedloop.sh
+    path: /.well-known/oauth-authorization-server
+    file: closedloop-mcp-oauth-authorization-server.json
+  validated_on: resource (RFC 9728) / issuer (RFC 8414, OIDC)
+  negative_control: one per host; a 2xx JSON object at an impossible path discards the host

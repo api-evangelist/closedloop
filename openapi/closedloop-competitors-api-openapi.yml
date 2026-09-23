@@ -1,0 +1,379 @@
+openapi: 3.2.0
+info:
+  title: ClosedLoop AI Public Competitors API
+  version: 1.8.0
+  x-logo:
+    url: https://app.closedloop.sh/favicon.svg
+    altText: ClosedLoop AI
+  description: '# ClosedLoop AI Public API
+
+
+    Programmatic access to your team''s **product insights**, the structured intelligence
+
+    ClosedLoop AI extracts from customer conversations (Gong, Fireflies, Slack, …) and
+
+    structured feedback (surveys, webhooks).'
+  contact:
+    name: ClosedLoop AI Support
+    email: support@closedloop.sh
+    url: https://closedloop.sh
+  license:
+    name: Proprietary (ClosedLoop Labs LLC)
+    url: https://closedloop.sh/terms
+servers:
+- url: https://api.closedloop.sh/v1
+  description: United States (production)
+- url: https://eu.api.closedloop.sh/v1
+  description: European Union (production)
+security:
+- ApiKeyAuth: []
+tags:
+- name: Competitors
+  description: 'Competitive pressure derived from your customers'' own words. Competitors with a
+
+    **mention trend over time** (not a static total), and a searchable feed of the exact
+
+    mentions, each showing the customer behind it.'
+paths:
+  /competitors:
+    get:
+      tags:
+      - Competitors
+      summary: List / search competitors
+      x-mint:
+        metadata:
+          description: List competitors mentioned by customers, including pressure trends and direction, with name search and links to the underlying evidence.
+      description: 'Competitors your customers mention. Each carries a **pressure time series**
+
+        (mention volume per period) plus a trend direction. A raw total tells you nothing;
+
+        the shape (rising vs. cooling) is what matters. Search by name; for the underlying
+
+        quotes use `/competitors/mentions`.'
+      parameters:
+      - $ref: '#/components/parameters/Query'
+      - name: granularity
+        in: query
+        schema:
+          type: string
+          enum:
+          - day
+          - week
+          - month
+          default: week
+        description: Bucket size for each competitor's pressure series.
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of competitors, each with a pressure time series
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Competitor'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '503':
+          $ref: '#/components/responses/AuthenticationUnavailable'
+      operationId: getCompetitors
+      x-operation-id-source: derived
+  /competitors/mentions:
+    get:
+      tags:
+      - Competitors
+      summary: Search competitor mentions
+      x-mint:
+        metadata:
+          description: Search verbatim competitor mentions by competitor, customer, text, or date, with source details and newest evidence returned first.
+      description: 'Every competitor mention across your customers, newest first. One row per mention
+
+        with the **competitor**, the **customer** who said it, the verbatim quote,
+
+        the source, and when. Filter by competitor, customer, free text, or date. This is the
+
+        evidence behind the pressure trends.'
+      parameters:
+      - $ref: '#/components/parameters/Query'
+      - name: competitor
+        in: query
+        schema:
+          type: string
+        description: 'Filter by competitor: id or name.'
+      - name: customer_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+        description: Filter to mentions from one customer.
+      - $ref: '#/components/parameters/DateFrom'
+      - $ref: '#/components/parameters/DateTo'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of competitor mentions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CompetitorMention'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '503':
+          $ref: '#/components/responses/AuthenticationUnavailable'
+      operationId: getCompetitorsMentions
+      x-operation-id-source: derived
+components:
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+      description: Page size (max 200).
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-31'
+      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+
+        Validated by the same rule as `date_from`.
+
+        '
+    DateFrom:
+      name: date_from
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-01'
+      description: 'Inclusive start date, as a real calendar date in `YYYY-MM-DD`.
+
+        Any other form is rejected with `400 VALIDATION_ERROR` - including
+
+        `2026-5-1`, `2026/05/01`, `May 1, 2026`, a bare `2026`, a date-time, and
+
+        impossible dates such as `2026-02-30`.
+
+        '
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
+    Query:
+      name: q
+      in: query
+      schema:
+        type: string
+      description: Free-text search over titles and content.
+  schemas:
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+    Pagination:
+      type: object
+      required:
+      - total
+      - limit
+      - offset
+      properties:
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+    CompetitorMention:
+      type: object
+      required:
+      - id
+      - competitor_id
+      - mentioned_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 51617100-0000-4000-8000-000000000009
+        competitor_id:
+          type: string
+          format: uuid
+          example: 0e11e100-0000-4000-8000-000000000001
+          description: The FIRST competitor named. Read `competitors` when a mention names more than one.
+        competitor_name:
+          type: string
+          example: Competitor X
+        competitors:
+          type: array
+          description: Every competitor this mention names, in the order the customer said them. A single mention often compares several.
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: 0e11e100-0000-4000-8000-000000000001
+              name:
+                type: string
+                example: Competitor X
+        customer_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          example: c0ffee00-0000-4000-8000-000000000001
+        customer_name:
+          type: string
+          example: Acme Co
+        quote:
+          type: string
+          description: Verbatim mention.
+          example: We're also trialing Competitor X because their reporting is faster.
+        source:
+          type: string
+          example: gong_call_def456
+        mentioned_at:
+          type: string
+          format: date-time
+          example: '2026-05-20T14:00:00Z'
+    Competitor:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 0e11e100-0000-4000-8000-000000000001
+        name:
+          type: string
+          example: Competitor X
+        customer_count:
+          type: integer
+          example: 12
+          description: Distinct customers who mentioned this competitor.
+        total_mentions:
+          type: integer
+          example: 41
+          description: Every mention naming this competitor, including mentions that name several. Context only; read `pressure` for the trend.
+        trend:
+          type: string
+          enum:
+          - rising
+          - steady
+          - falling
+          example: rising
+          description: Direction of the pressure series.
+        pressure:
+          type: array
+          description: Mention volume per period is the pressure trend. A single sum says nothing; the change over time matters.
+          items:
+            type: object
+            properties:
+              period:
+                type: string
+                example: '2026-05-11'
+              mentions:
+                type: integer
+                example: 7
+        first_mentioned:
+          type: string
+          format: date-time
+          example: '2026-03-02T00:00:00Z'
+        last_mentioned:
+          type: string
+          format: date-time
+          example: '2026-06-18T00:00:00Z'
+        summary:
+          type: string
+          example: Most-cited alternative on lost deals; wins on native reporting.
+  responses:
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: 'Team-scoped API key created in the app (Settings → API Keys).
+
+        Sent as `X-API-Key: <key>` on every request. The header name `apikey`
+
+        is also accepted as an alias.
+
+        '
+x-tagGroups:
+- name: Prioritization
+  tags:
+  - Insights
+  - Products
+  - Themes
+  - Features
+- name: Customers & Context
+  tags:
+  - Customers
+  - Context
+  - Competitors
+- name: Reporting
+  tags:
+  - Analytics
+- name: Account
+  tags:
+  - Integrations
+  - Usage
+- name: Meta
+  tags:
+  - Meta

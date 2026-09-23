@@ -1,0 +1,706 @@
+openapi: 3.2.0
+info:
+  title: ClosedLoop AI Public Features API
+  version: 1.8.0
+  x-logo:
+    url: https://app.closedloop.sh/favicon.svg
+    altText: ClosedLoop AI
+  description: '# ClosedLoop AI Public API
+
+
+    Programmatic access to your team''s **product insights**, the structured intelligence
+
+    ClosedLoop AI extracts from customer conversations (Gong, Fireflies, Slack, …) and
+
+    structured feedback (surveys, webhooks).'
+  contact:
+    name: ClosedLoop AI Support
+    email: support@closedloop.sh
+    url: https://closedloop.sh
+  license:
+    name: Proprietary (ClosedLoop Labs LLC)
+    url: https://closedloop.sh/terms
+servers:
+- url: https://api.closedloop.sh/v1
+  description: United States (production)
+- url: https://eu.api.closedloop.sh/v1
+  description: European Union (production)
+security:
+- ApiKeyAuth: []
+tags:
+- name: Features
+  description: '**Features**: the buildable, shippable children of a theme. Filter by `theme_id`.
+
+    Same theme → features hierarchy you see on the roadmap.'
+paths:
+  /features:
+    get:
+      operationId: listFeatures
+      tags:
+      - Features
+      summary: List / search features
+      x-mint:
+        metadata:
+          description: List or search buildable features by theme, product, area, status, or text, with scoped evidence counts and deterministic sorting.
+      description: 'Buildable features: the shippable children of a theme. Filter by `theme_id`,
+
+        `product_id`, `feature_area_id`, `product_area_id`, `product_feature_id`,
+
+        status, or search text.
+
+        Product fields are null when a feature has not been assigned to a product.
+
+
+        `feature_area_id` is a subject area from `/areas`, NOT a feature ID from this
+
+        endpoint. The two are different kinds of ID: a feature ID identifies one
+
+        buildable feature and is what `/features/{id}` takes, while a feature-area ID
+
+        identifies the area an insight is filed under. `feature_area_id` therefore
+
+        selects features by the area of their supporting insights.
+
+
+        With an AREA filter — `feature_area_id`, `product_area_id`, or both —
+
+        `insight_count` and `unique_customer_count` are RECOMPUTED from the distinct
+
+        insights in that scope and the distinct customers behind them; features with
+
+        no matching evidence are omitted, and `pagination.total` counts what is
+
+        returned. `sort=insight_count` and `sort=unique_customer_count` then rank on
+
+        those scoped values. `sort=ric_score` is unchanged by the filter: it stays the
+
+        feature''s stored OVERALL score across every area, so a feature can outrank
+
+        another that has more evidence in the selected scope. Every sort resolves ties
+
+        on the immutable feature ID, so paging is deterministic. With NEITHER area
+
+        filter the counts are the feature''s stored all-area totals. Every filter on
+
+        this endpoint combines with AND.
+
+
+        The default response is CURATED, not a census: each team has an adaptive
+
+        size floor, computed nightly from that team''s own distribution, and very
+
+        small items below it are excluded — the same set the ClosedLoop AI app
+
+        shows. `pagination.total` counts the curated set. Set `show_all=true` for
+
+        every row regardless of size. Teams with too little data to compute a
+
+        floor are never filtered.
+
+
+        Unlike `/themes`, this floor applies at every status: a feature is sized
+
+        by its own insight count, which a finished feature still has. That size is the
+
+        feature''s OVERALL insight count, so the floor is unaffected by the area
+
+        filters and `show_all=true` does not widen the selected area. The floor and
+
+        the published count therefore read different numbers: a returned feature can
+
+        carry a scoped `insight_count` below the floor, because the floor judged its
+
+        overall size, and a feature whose evidence sits entirely in the selected area
+
+        is still hidden when its overall count is below the floor.'
+      parameters:
+      - name: show_all
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: Include features below the team's adaptive size floor. Default false.
+      - $ref: '#/components/parameters/Query'
+      - name: search_mode
+        in: query
+        schema:
+          type: string
+          enum:
+          - lexical
+          - semantic
+          default: lexical
+        description: 'Lexical substring matching against the feature''s own title and
+
+          description, or semantic matching against feature embeddings.
+
+
+          Semantic search returns rows best-match-first and therefore OVERRIDES
+
+          `sort`. Relevance order and size order are mutually exclusive: a caller
+
+          relying on `sort=insight_count` for scope-aware ordering loses it when
+
+          semantic is enabled.
+
+
+          Semantic requests share ONE rate budget with `/themes`; they are not
+
+          separately allowanced.
+
+          '
+      - name: min_similarity
+        in: query
+        schema:
+          type: number
+          format: float
+          minimum: 0.3
+          maximum: 1
+          default: 0.5
+        description: 'Minimum cosine similarity for semantic search. Valid only when
+
+          search_mode is semantic.
+
+          '
+      - name: allow_fallback
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: 'Permit falling back to lexical when an embedding cannot be generated.
+
+          Default false, so such a request fails with 503 rather than silently
+
+          returning a different result set. The response always reports the mode
+
+          that actually ran.
+
+          '
+      - name: theme_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+        description: Return only the features under this theme.
+      - $ref: '#/components/parameters/ProductId'
+      - $ref: '#/components/parameters/FeatureAreaId'
+      - name: product_area_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+        description: 'Return only features with supporting insights filed anywhere under this
+
+          parent product area, with `insight_count` and `unique_customer_count`
+
+          recomputed over exactly that evidence. This is `feature_area_id` one
+
+          level up: a product area is the parent of many feature areas, so it is
+
+          the coarser cut of the same question. Combines with every other filter
+
+          using AND, so pairing it with `feature_area_id` narrows to that one
+
+          child area — and yields nothing when that area sits under a different
+
+          product area.
+
+
+          ARCHIVED child areas are excluded, which `feature_area_id` does not do:
+
+          naming an archived area directly still counts its evidence, while its
+
+          parent product area does not. A product area whose children are all
+
+          archived therefore returns an empty list. `/areas` with
+
+          `include_archived=true` sums archived children into a product area''s
+
+          `insight_count`, so that total can exceed what this filter returns.
+
+          '
+      - name: product_feature_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+        description: 'Return only the feature with this ID. On THIS endpoint the parameter
+
+          names the listed resource itself, so it selects that one feature;
+
+          on `/insights` and `/themes` the same parameter instead means
+
+          "linked to this feature". Combines with every other filter using
+
+          AND, so pairing it with `feature_area_id` answers "does this feature
+
+          have evidence in that area, and how much" in one call. Use
+
+          `/features/{id}` to fetch one feature with its evidence, severity
+
+          breakdown and affected customers.
+
+          '
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - active
+          - declined
+          - shipped
+          - parked
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - ric_score
+          - insight_count
+          - unique_customer_count
+          - created_at
+          default: ric_score
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of features
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - pagination
+                - search_mode
+                - min_similarity
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Feature'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                  search_mode:
+                    type: string
+                    enum:
+                    - lexical
+                    - semantic
+                    description: Search mode actually applied. Lexical indicates lexical/default search or an explicitly allowed fallback.
+                  min_similarity:
+                    type:
+                    - number
+                    - 'null'
+                    format: float
+                    description: Applied semantic threshold, or null when the applied mode was lexical.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/AuthenticationUnavailable'
+  /features/{id}:
+    get:
+      operationId: getFeature
+      tags:
+      - Features
+      summary: Get a feature
+      description: 'Feature detail with its evidence: severity breakdown, affected customers, and top
+
+        supporting insights.'
+      parameters:
+      - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Feature detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/AuthenticationUnavailable'
+components:
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+      description: Page size (max 200).
+    ProductId:
+      name: product_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one product ID from `/products`.
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource UUID.
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
+    Query:
+      name: q
+      in: query
+      schema:
+        type: string
+      description: Free-text search over titles and content.
+    FeatureAreaId:
+      name: feature_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
+
+        area an insight is filed under; it is NOT a buildable feature ID from
+
+        `/features`, and the two are never interchangeable.
+
+        '
+  schemas:
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+    Pagination:
+      type: object
+      required:
+      - total
+      - limit
+      - offset
+      properties:
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+    Customer:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: c0ffee00-0000-4000-8000-000000000001
+        name:
+          type: string
+          example: Acme Co
+        parent_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Parent account (account family), if this is a child property.
+        parent_name:
+          type:
+          - string
+          - 'null'
+          description: Parent account name.
+        domain:
+          type: string
+          example: acme.com
+        industry:
+          type: string
+          example: Hospitality
+        employee_count:
+          type: integer
+          example: 250
+        arr:
+          type:
+          - number
+          - 'null'
+          example: 48000
+          description: 'Annualized recurring revenue: SUM of won-deal annual_value (team currency).'
+        currency:
+          type: string
+          example: USD
+        is_active_customer:
+          type:
+          - boolean
+          - 'null'
+          example: true
+          description: Tri-state. true = a confirmed active customer; false = resolved and not an active customer; null = the account could not be resolved, so the status is unknown. Never read null as false.
+        churn_state:
+          type: string
+          enum:
+          - active
+          - at_risk
+          - churned
+          example: active
+        insight_count:
+          type: integer
+          example: 23
+        last_seen:
+          type: string
+          format: date-time
+          example: '2026-06-10T09:00:00Z'
+    FeatureDetail:
+      allOf:
+      - $ref: '#/components/schemas/Feature'
+      - type: object
+        properties:
+          insight_count:
+            type: integer
+            description: Distinct supporting insights across every area, counted from the feature's current evidence. This detail response is never scoped by `feature_area_id`, and it can differ from the same field on `GET /features` without a filter, which reports the stored rollup.
+          unique_customer_count:
+            type: integer
+            description: Distinct customers behind those insights, counted the same way as `insight_count` above.
+          deal_blocker_count:
+            type: integer
+            description: Distinct customers represented by deal-blocker evidence.
+          severity_breakdown:
+            type: object
+            example:
+              critical: 0
+              high: 3
+              medium: 7
+              low: 2
+          top_insights:
+            type: array
+            items:
+              $ref: '#/components/schemas/InsightSummary'
+          affected_customers:
+            type: array
+            items:
+              $ref: '#/components/schemas/Customer'
+    Feature:
+      type: object
+      required:
+      - id
+      - theme_id
+      - title
+      - ric_score
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: b2c3d4e5-f6a7-4b8c-9d0e-000000000002
+        theme_id:
+          type: string
+          format: uuid
+          example: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+          description: The parent theme.
+        title:
+          type: string
+          example: Dark mode toggle in settings
+        description:
+          type: string
+          example: A user-controllable dark / light toggle in the settings panel.
+        ric_score:
+          type: number
+          example: 6.9
+        insight_count:
+          type: integer
+          example: 12
+          description: Supporting insights across every area. On `GET /features` with `feature_area_id`, this is instead recomputed from the insights in the selected area only. See `/features/{id}` for how the detail response derives it.
+        unique_customer_count:
+          type: integer
+          example: 9
+          description: Distinct customers behind those insights, scoped the same way as `insight_count`.
+        product_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Assigned product, if any.
+        product_name:
+          type:
+          - string
+          - 'null'
+          example: Core Platform
+        status:
+          type: string
+          enum:
+          - active
+          - declined
+          - shipped
+          - parked
+          example: active
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-04-05T00:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2026-06-01T00:00:00Z'
+    InsightSummary:
+      type: object
+      description: Compact insight evidence embedded in theme and feature detail responses.
+      required:
+      - id
+      - title
+      - severity
+      - source
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        category:
+          type: string
+        severity:
+          type: string
+          enum:
+          - critical
+          - high
+          - medium
+          - low
+        customer_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        customer_name:
+          type: string
+        source:
+          type: string
+        source_date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+  responses:
+    Unauthorized:
+      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
+
+        header is absent, or `INVALID_API_KEY` when a key is present but invalid
+
+        or inactive.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: No key provided
+              value:
+                error: API key required.
+                code: NO_API_KEY
+                hint: Send your key in the X-API-Key header.
+            invalid:
+              summary: Key invalid or inactive
+              value:
+                error: Invalid or inactive API key.
+                code: INVALID_API_KEY
+                hint: Create a key in Settings → API Keys.
+    NotFound:
+      description: Resource not found (or not in your team)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not found.
+            code: NOT_FOUND
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: 'Team-scoped API key created in the app (Settings → API Keys).
+
+        Sent as `X-API-Key: <key>` on every request. The header name `apikey`
+
+        is also accepted as an alias.
+
+        '
+x-tagGroups:
+- name: Prioritization
+  tags:
+  - Insights
+  - Products
+  - Themes
+  - Features
+- name: Customers & Context
+  tags:
+  - Customers
+  - Context
+  - Competitors
+- name: Reporting
+  tags:
+  - Analytics
+- name: Account
+  tags:
+  - Integrations
+  - Usage
+- name: Meta
+  tags:
+  - Meta

@@ -1,0 +1,506 @@
+openapi: 3.2.0
+info:
+  title: ClosedLoop AI Public Analytics API
+  version: 1.8.0
+  x-logo:
+    url: https://app.closedloop.sh/favicon.svg
+    altText: ClosedLoop AI
+  description: '# ClosedLoop AI Public API
+
+
+    Programmatic access to your team''s **product insights**, the structured intelligence
+
+    ClosedLoop AI extracts from customer conversations (Gong, Fireflies, Slack, …) and
+
+    structured feedback (surveys, webhooks).'
+  contact:
+    name: ClosedLoop AI Support
+    email: support@closedloop.sh
+    url: https://closedloop.sh
+  license:
+    name: Proprietary (ClosedLoop Labs LLC)
+    url: https://closedloop.sh/terms
+servers:
+- url: https://api.closedloop.sh/v1
+  description: United States (production)
+- url: https://eu.api.closedloop.sh/v1
+  description: European Union (production)
+security:
+- ApiKeyAuth: []
+tags:
+- name: Analytics
+  description: Trends, cohorts and facet counts over the full dataset.
+paths:
+  /coverage:
+    get:
+      operationId: getCoverage
+      tags:
+      - Analytics
+      summary: Check evidence coverage
+      x-mint:
+        metadata:
+          description: Check whether a product or area scope has enough evidence for reliable analysis, including coverage dates and windowed insight totals.
+      description: 'Classifies whether evidence in a product or area scope is informative, too thin,
+
+        or predates team coverage. The current density threshold is 50 distinct insights.
+
+        `policy_version` makes future policy changes explicit.
+
+
+        `scope.feedback_since` and `scope.all_time_insight_count` ignore the requested date
+
+        window but keep the product and area filters. Windowed counts apply every filter.'
+      parameters:
+      - $ref: '#/components/parameters/ProductId'
+      - $ref: '#/components/parameters/ProductFeatureId'
+      - $ref: '#/components/parameters/ProductAreaId'
+      - $ref: '#/components/parameters/FeatureAreaId'
+      - $ref: '#/components/parameters/DateFrom'
+      - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Coverage verdict and supporting totals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coverage'
+              example:
+                verdict: informative
+                reason: density_threshold_met
+                reads_as: 84 insights across 6 themes cover the requested scope, so a weak match is worth noticing — but it still is not proof that nobody wants it.
+                policy_version: '1'
+                density_threshold: 50
+                filters:
+                  product_id: null
+                  product_feature_id: null
+                  product_area_id: 223e4567-e89b-42d3-a456-426614174000
+                  feature_area_id: null
+                date_range:
+                  from: null
+                  to: null
+                scope:
+                  insight_count: 84
+                  all_time_insight_count: 84
+                  theme_count: 6
+                  customer_count: 31
+                  deal_blocker_count: 4
+                  feedback_since: '2026-01-12T09:00:00Z'
+                team:
+                  insight_count: 508
+                  feedback_since: '2025-11-03T12:00:00Z'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/AuthenticationUnavailable'
+  /trends:
+    get:
+      tags:
+      - Analytics
+      summary: Time-series trends
+      description: 'Zero-filled time series for a metric over a window. Carries a `feedback_since`
+
+        coverage boundary so early empty buckets aren''t misread as "zero activity".'
+      parameters:
+      - name: metric
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - insights
+          - themes
+          - features
+          - context
+          - competitor_mentions
+      - name: granularity
+        in: query
+        schema:
+          type: string
+          enum:
+          - day
+          - week
+          - month
+          default: week
+      - $ref: '#/components/parameters/DateFrom'
+      - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Trend series
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrendSeries'
+        '503':
+          $ref: '#/components/responses/AuthenticationUnavailable'
+      operationId: getTrends
+      x-operation-id-source: derived
+  /facets:
+    get:
+      tags:
+      - Analytics
+      summary: Facet counts
+      description: 'Available filter values and their counts over the full dataset (categories,
+
+        severities, sources). Useful for building filter UIs.'
+      responses:
+        '200':
+          description: Facet map
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      value:
+                        type: string
+                      count:
+                        type: integer
+                example:
+                  category:
+                  - value: bug
+                    count: 214
+                  - value: feature request
+                    count: 508
+                  severity:
+                  - value: high
+                    count: 96
+                  - value: medium
+                    count: 402
+        '503':
+          $ref: '#/components/responses/AuthenticationUnavailable'
+      operationId: getFacets
+      x-operation-id-source: derived
+components:
+  schemas:
+    TrendSeries:
+      type: object
+      properties:
+        metric:
+          type: string
+          example: insights
+        granularity:
+          type: string
+          example: week
+        feedback_since:
+          type: string
+          format: date-time
+          example: '2026-02-01T00:00:00Z'
+        note:
+          type: string
+          example: Buckets before feedback_since are empty due to coverage, not zero activity.
+        points:
+          type: array
+          items:
+            type: object
+            properties:
+              period:
+                type: string
+                example: '2026-05-11'
+              value:
+                type: integer
+                example: 34
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+    Coverage:
+      type: object
+      required:
+      - verdict
+      - reason
+      - reads_as
+      - policy_version
+      - density_threshold
+      - filters
+      - date_range
+      - scope
+      - team
+      properties:
+        verdict:
+          type: string
+          enum:
+          - informative
+          - too_thin
+          - pre_coverage
+          description: Whether absence or weak evidence in the requested scope can be interpreted meaningfully.
+        reason:
+          type: string
+          enum:
+          - no_team_feedback
+          - window_before_team_coverage
+          - empty_scope_window
+          - below_density_threshold
+          - density_threshold_met
+        reads_as:
+          type: string
+          description: Human-readable interpretation of the verdict.
+        policy_version:
+          type: string
+          example: '1'
+        density_threshold:
+          type: integer
+          example: 50
+        filters:
+          type: object
+          required:
+          - product_id
+          - product_feature_id
+          - product_area_id
+          - feature_area_id
+          properties:
+            product_id:
+              type:
+              - string
+              - 'null'
+              format: uuid
+            product_feature_id:
+              type:
+              - string
+              - 'null'
+              format: uuid
+            product_area_id:
+              type:
+              - string
+              - 'null'
+              format: uuid
+            feature_area_id:
+              type:
+              - string
+              - 'null'
+              format: uuid
+        date_range:
+          type: object
+          required:
+          - from
+          - to
+          properties:
+            from:
+              type:
+              - string
+              - 'null'
+            to:
+              type:
+              - string
+              - 'null'
+        scope:
+          type: object
+          required:
+          - insight_count
+          - all_time_insight_count
+          - theme_count
+          - customer_count
+          - deal_blocker_count
+          - feedback_since
+          properties:
+            insight_count:
+              type: integer
+              description: Distinct insights in the filtered date window.
+            all_time_insight_count:
+              type: integer
+              description: Distinct insights for the product/area scope across all time.
+            theme_count:
+              type: integer
+              description: Distinct active top-level themes reached by the filtered insights.
+            customer_count:
+              type: integer
+              description: Distinct customers represented by the filtered insights.
+            deal_blocker_count:
+              type: integer
+              description: Filtered insights marked as deal blockers.
+            feedback_since:
+              type:
+              - string
+              - 'null'
+              format: date-time
+              description: Earliest feedback for the product/area scope across all time.
+        team:
+          type: object
+          required:
+          - insight_count
+          - feedback_since
+          properties:
+            insight_count:
+              type: integer
+              description: All insights for the authenticated team.
+            feedback_since:
+              type:
+              - string
+              - 'null'
+              format: date-time
+              description: Earliest feedback for the authenticated team.
+  parameters:
+    ProductAreaId:
+      name: product_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one parent product-area ID from `/areas`.
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-31'
+      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+
+        Validated by the same rule as `date_from`.
+
+        '
+    DateFrom:
+      name: date_from
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-01'
+      description: 'Inclusive start date, as a real calendar date in `YYYY-MM-DD`.
+
+        Any other form is rejected with `400 VALIDATION_ERROR` - including
+
+        `2026-5-1`, `2026/05/01`, `May 1, 2026`, a bare `2026`, a date-time, and
+
+        impossible dates such as `2026-02-30`.
+
+        '
+    ProductId:
+      name: product_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one product ID from `/products`.
+    ProductFeatureId:
+      name: product_feature_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one buildable product feature ID from `/features`.
+    FeatureAreaId:
+      name: feature_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
+
+        area an insight is filed under; it is NOT a buildable feature ID from
+
+        `/features`, and the two are never interchangeable.
+
+        '
+  responses:
+    Unauthorized:
+      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
+
+        header is absent, or `INVALID_API_KEY` when a key is present but invalid
+
+        or inactive.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: No key provided
+              value:
+                error: API key required.
+                code: NO_API_KEY
+                hint: Send your key in the X-API-Key header.
+            invalid:
+              summary: Key invalid or inactive
+              value:
+                error: Invalid or inactive API key.
+                code: INVALID_API_KEY
+                hint: Create a key in Settings → API Keys.
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: 'Team-scoped API key created in the app (Settings → API Keys).
+
+        Sent as `X-API-Key: <key>` on every request. The header name `apikey`
+
+        is also accepted as an alias.
+
+        '
+x-tagGroups:
+- name: Prioritization
+  tags:
+  - Insights
+  - Products
+  - Themes
+  - Features
+- name: Customers & Context
+  tags:
+  - Customers
+  - Context
+  - Competitors
+- name: Reporting
+  tags:
+  - Analytics
+- name: Account
+  tags:
+  - Integrations
+  - Usage
+- name: Meta
+  tags:
+  - Meta

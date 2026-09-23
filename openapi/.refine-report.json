@@ -1,0 +1,40 @@
+{
+  "provider": "closedloop",
+  "sources": [
+    "_original/closedloop-openapi-original.yaml"
+  ],
+  "outputs": [
+    "closedloop-analytics-api-openapi.yml",
+    "closedloop-competitors-api-openapi.yml",
+    "closedloop-context-api-openapi.yml",
+    "closedloop-customers-api-openapi.yml",
+    "closedloop-features-api-openapi.yml",
+    "closedloop-insights-api-openapi.yml",
+    "closedloop-integrations-api-openapi.yml",
+    "closedloop-meta-api-openapi.yml",
+    "closedloop-products-api-openapi.yml",
+    "closedloop-themes-api-openapi.yml",
+    "closedloop-usage-api-openapi.yml"
+  ],
+  "archived": [],
+  "errors": [],
+  "warnings": [],
+  "notes": [
+    "sourced from openapi/_original/ (1 archived document(s)); previously refined output at the top level was skipped rather than re-split",
+    "closedloop-openapi-original.yaml: upgraded openapi 3.0.3 -> OpenAPI 3.2.0",
+    "apis.yml register: already-registered"
+  ],
+  "skipped": [
+    "closedloop-analytics-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "closedloop-competitors-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "closedloop-context-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "closedloop-customers-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "closedloop-features-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "closedloop-insights-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "closedloop-integrations-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "closedloop-meta-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "closedloop-products-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "closedloop-themes-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "closedloop-usage-api-openapi.yml: previously refined output, superseded by openapi/_original/"
+  ]
+}

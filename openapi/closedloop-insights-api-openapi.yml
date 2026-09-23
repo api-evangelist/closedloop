@@ -1,0 +1,668 @@
+openapi: 3.2.0
+info:
+  title: ClosedLoop AI Public Insights API
+  version: 1.8.0
+  x-logo:
+    url: https://app.closedloop.sh/favicon.svg
+    altText: ClosedLoop AI
+  description: '# ClosedLoop AI Public API
+
+
+    Programmatic access to your team''s **product insights**, the structured intelligence
+
+    ClosedLoop AI extracts from customer conversations (Gong, Fireflies, Slack, …) and
+
+    structured feedback (surveys, webhooks).'
+  contact:
+    name: ClosedLoop AI Support
+    email: support@closedloop.sh
+    url: https://closedloop.sh
+  license:
+    name: Proprietary (ClosedLoop Labs LLC)
+    url: https://closedloop.sh/terms
+servers:
+- url: https://api.closedloop.sh/v1
+  description: United States (production)
+- url: https://eu.api.closedloop.sh/v1
+  description: European Union (production)
+security:
+- ApiKeyAuth: []
+tags:
+- name: Insights
+  description: 'Individual **product insights**: structured, AI-processed feedback items
+
+    (pain point, severity, workaround, competitor gap, evidence).'
+paths:
+  /insights:
+    get:
+      operationId: listInsights
+      tags:
+      - Insights
+      summary: List / search insights
+      x-mint:
+        metadata:
+          description: Search processed product insights by customer, severity, product scope, date, or text, with offset or fixed-watermark incremental pagination.
+      description: 'Search processed product insights. Filter by category, severity, customer,
+
+        product, product feature, product area, feature area, date range, or a
+
+        free-text query.
+
+
+        Offset pagination is the default. For a stable incremental export, start with
+
+        `updated_since`; then follow `next_cursor` using only `cursor` and optionally
+
+        `limit`. The fixed export window is `updated_since < updated_at <= sync_until`.
+
+
+        Product filtering returns insights with a recorded product association. Some
+
+        insights remain unassigned when ClosedLoop AI cannot determine a reliable
+
+        automatic match, so filtered results may not include every potentially relevant
+
+        insight. Responses expose the IDs accepted by all four product-scope filters:
+
+        `products[].id`, `product_features[].id`, `product_area_id`, and `feature_area_id`.'
+      parameters:
+      - $ref: '#/components/parameters/Query'
+      - name: category
+        in: query
+        schema:
+          type: string
+          example: bug
+        description: Feedback category (e.g. bug, feature request, usability).
+      - name: severity
+        in: query
+        schema:
+          type: string
+          enum:
+          - critical
+          - high
+          - medium
+          - low
+      - name: customer_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+        description: Filter to insights from one customer (same key as on context).
+      - $ref: '#/components/parameters/ProductId'
+      - $ref: '#/components/parameters/ProductFeatureId'
+      - $ref: '#/components/parameters/ProductAreaId'
+      - $ref: '#/components/parameters/FeatureAreaId'
+      - $ref: '#/components/parameters/DateFrom'
+      - $ref: '#/components/parameters/DateTo'
+      - name: updated_since
+        in: query
+        schema:
+          type: string
+          format: date-time
+        example: '2026-05-01T00:00:00Z'
+        description: 'Start a fixed-watermark incremental export after this insight-row update
+
+          timestamp. Cannot be combined with `offset` or `cursor`.
+
+
+          Must be a timezone-qualified ISO 8601 date-time - the offset is
+
+          required, so `2026-05-01T00:00:00` (no `Z` or `+hh:mm`) is rejected
+
+          with `400 VALIDATION_ERROR`, as is a date-only value.
+
+          '
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 8192
+        description: 'Opaque continuation cursor returned by the prior incremental page. A cursor
+
+          request may include only `cursor` and `limit`. It is bound to the team, exact
+
+          API key, filters, and watermark.
+
+          '
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Insight'
+                  pagination:
+                    oneOf:
+                    - $ref: '#/components/schemas/Pagination'
+                    - $ref: '#/components/schemas/CursorPagination'
+              examples:
+                offset:
+                  summary: Offset page
+                  value:
+                    data:
+                    - id: 123e4567-e89b-42d3-a456-426614174000
+                      title: Scheduled exports are needed for reporting
+                      category: feature request
+                      severity: medium
+                      customer_id: c0ffee00-0000-4000-8000-000000000001
+                      customer_name: Acme Co
+                      source: gong_call_abc123
+                      source_date: '2026-05-14T10:30:00Z'
+                      created_at: '2026-05-14T10:32:00Z'
+                      updated_at: '2026-05-15T08:12:00Z'
+                      feature_area_id: 523e4567-e89b-42d3-a456-426614174004
+                      feature_area_name: Exports
+                      product_area_id: 423e4567-e89b-42d3-a456-426614174003
+                      product_area_name: Operations
+                      products:
+                      - id: 223e4567-e89b-42d3-a456-426614174001
+                        name: Core Platform
+                        status: active
+                      product_features:
+                      - id: 323e4567-e89b-42d3-a456-426614174002
+                        title: Scheduled exports
+                        product_id: 223e4567-e89b-42d3-a456-426614174001
+                    pagination:
+                      total: 1
+                      limit: 50
+                      offset: 0
+                incremental:
+                  summary: Incremental page
+                  value:
+                    data: []
+                    pagination:
+                      limit: 200
+                      has_more: false
+                      next_cursor: null
+                      sync_until: '2026-05-14T10:30:00.123456Z'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/InsightsUnavailable'
+  /insights/{id}:
+    get:
+      operationId: getInsight
+      tags:
+      - Insights
+      summary: Get an insight
+      description: 'Full insight detail with evidence: pain point, workaround, competitor gap,
+
+        willingness to pay, feature area, product associations, and the verbatim quote.'
+      parameters:
+      - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Insight detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsightDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/AuthenticationUnavailable'
+components:
+  schemas:
+    Pagination:
+      type: object
+      required:
+      - total
+      - limit
+      - offset
+      properties:
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+    ProductAssociation:
+      type: object
+      required:
+      - id
+      - name
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Immutable product UUID.
+        name:
+          type: string
+          example: Core Platform
+        status:
+          type: string
+          enum:
+          - draft
+          - active
+          - retired
+          example: active
+    InsightDetail:
+      allOf:
+      - $ref: '#/components/schemas/Insight'
+      - type: object
+        properties:
+          content:
+            type: string
+            description: Insight content (always English).
+            example: The customer wants a dark mode option for night-time use.
+          quote:
+            type: string
+            description: Verbatim supporting quote.
+            example: I'd honestly pay more if you just had a dark theme.
+          pain_point:
+            type: string
+            example: Bright interface is hard to use in low light.
+          workaround:
+            type: string
+            example: Uses a browser dark-mode extension.
+          competitor_gap:
+            type: string
+            example: Competitor X ships native dark mode.
+          willingness_to_pay:
+            type: string
+            example: High
+          feature_area:
+            type: string
+            example: UI/UX
+          source_url:
+            type: string
+            format: uri
+            example: https://gong.io/calls/abc123
+    CursorPagination:
+      type: object
+      required:
+      - limit
+      - has_more
+      - next_cursor
+      - sync_until
+      properties:
+        limit:
+          type: integer
+          example: 200
+        has_more:
+          type: boolean
+          example: true
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          description: Opaque cursor for the next page; null on the final page.
+        sync_until:
+          type: string
+          format: date-time
+          example: '2026-05-14T10:30:00.123456Z'
+          description: Fixed upper watermark. Commit it as the next checkpoint only after the final page.
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+    ProductFeatureAssociation:
+      type: object
+      required:
+      - id
+      - title
+      - product_id
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Product-feature UUID accepted by the product_feature_id filter.
+        title:
+          type: string
+          example: Scheduled exports
+        product_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Associated product UUID, or null when the feature is not assigned to a product.
+    Insight:
+      type: object
+      required:
+      - id
+      - title
+      - severity
+      - source
+      - created_at
+      - updated_at
+      - products
+      - product_features
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-42d3-a456-426614174000
+          description: Immutable UUID; never reassigned to another insight.
+        title:
+          type: string
+          example: Users want a dark mode toggle
+        category:
+          type: string
+          example: feature request
+        severity:
+          type: string
+          enum:
+          - critical
+          - high
+          - medium
+          - low
+          example: medium
+        customer_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: 'Resolved customer: the shared key that links an insight to its context (same customer).'
+          example: c0ffee00-0000-4000-8000-000000000001
+        customer_name:
+          type: string
+          example: Acme Co
+        source:
+          type: string
+          example: gong_call_abc123
+        source_date:
+          type: string
+          format: date-time
+          example: '2026-05-14T10:30:00Z'
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-05-14T10:32:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2026-05-15T08:12:00Z'
+          description: Insight-row update timestamp used by incremental export.
+        feature_area_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        feature_area_name:
+          type:
+          - string
+          - 'null'
+          example: Exports
+        product_area_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        product_area_name:
+          type:
+          - string
+          - 'null'
+          example: Operations
+        products:
+          type: array
+          description: 'Recorded product associations. Empty when the insight is unassigned. Some
+
+            insights cannot be matched automatically with enough confidence.
+
+            '
+          items:
+            $ref: '#/components/schemas/ProductAssociation'
+        product_features:
+          type: array
+          description: 'Recorded buildable-feature associations, ordered by title and ID. Empty when
+
+            the insight has no reliable feature match.
+
+            '
+          items:
+            $ref: '#/components/schemas/ProductFeatureAssociation'
+  responses:
+    Unauthorized:
+      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
+
+        header is absent, or `INVALID_API_KEY` when a key is present but invalid
+
+        or inactive.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: No key provided
+              value:
+                error: API key required.
+                code: NO_API_KEY
+                hint: Send your key in the X-API-Key header.
+            invalid:
+              summary: Key invalid or inactive
+              value:
+                error: Invalid or inactive API key.
+                code: INVALID_API_KEY
+                hint: Create a key in Settings → API Keys.
+    NotFound:
+      description: Resource not found (or not in your team)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not found.
+            code: NOT_FOUND
+    InsightsUnavailable:
+      description: API-key authentication or incremental insight export is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          examples:
+            authentication:
+              value: 10
+            export:
+              value: 5
+          description: Wait 10 seconds after an authentication failure, or 5 seconds after an export failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+            export:
+              summary: Safe incremental-export watermark unavailable
+              value:
+                error: Incremental export is temporarily unavailable.
+                code: EXPORT_UNAVAILABLE
+                hint: Retry the request in a few seconds.
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+  parameters:
+    ProductAreaId:
+      name: product_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one parent product-area ID from `/areas`.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+      description: Page size (max 200).
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-31'
+      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+
+        Validated by the same rule as `date_from`.
+
+        '
+    ProductId:
+      name: product_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one product ID from `/products`.
+    FeatureAreaId:
+      name: feature_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
+
+        area an insight is filed under; it is NOT a buildable feature ID from
+
+        `/features`, and the two are never interchangeable.
+
+        '
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource UUID.
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
+    Query:
+      name: q
+      in: query
+      schema:
+        type: string
+      description: Free-text search over titles and content.
+    DateFrom:
+      name: date_from
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-01'
+      description: 'Inclusive start date, as a real calendar date in `YYYY-MM-DD`.
+
+        Any other form is rejected with `400 VALIDATION_ERROR` - including
+
+        `2026-5-1`, `2026/05/01`, `May 1, 2026`, a bare `2026`, a date-time, and
+
+        impossible dates such as `2026-02-30`.
+
+        '
+    ProductFeatureId:
+      name: product_feature_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one buildable product feature ID from `/features`.
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: 'Team-scoped API key created in the app (Settings → API Keys).
+
+        Sent as `X-API-Key: <key>` on every request. The header name `apikey`
+
+        is also accepted as an alias.
+
+        '
+x-tagGroups:
+- name: Prioritization
+  tags:
+  - Insights
+  - Products
+  - Themes
+  - Features
+- name: Customers & Context
+  tags:
+  - Customers
+  - Context
+  - Competitors
+- name: Reporting
+  tags:
+  - Analytics
+- name: Account
+  tags:
+  - Integrations
+  - Usage
+- name: Meta
+  tags:
+  - Meta

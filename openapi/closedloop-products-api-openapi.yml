@@ -1,0 +1,371 @@
+openapi: 3.2.0
+info:
+  title: ClosedLoop AI Public Products API
+  version: 1.8.0
+  x-logo:
+    url: https://app.closedloop.sh/favicon.svg
+    altText: ClosedLoop AI
+  description: '# ClosedLoop AI Public API
+
+
+    Programmatic access to your team''s **product insights**, the structured intelligence
+
+    ClosedLoop AI extracts from customer conversations (Gong, Fireflies, Slack, …) and
+
+    structured feedback (surveys, webhooks).'
+  contact:
+    name: ClosedLoop AI Support
+    email: support@closedloop.sh
+    url: https://closedloop.sh
+  license:
+    name: Proprietary (ClosedLoop Labs LLC)
+    url: https://closedloop.sh/terms
+servers:
+- url: https://api.closedloop.sh/v1
+  description: United States (production)
+- url: https://eu.api.closedloop.sh/v1
+  description: European Union (production)
+security:
+- ApiKeyAuth: []
+tags:
+- name: Products
+  description: The current product, product-area, and feature-area vocabulary for the team.
+paths:
+  /products:
+    get:
+      operationId: listProducts
+      tags:
+      - Products
+      summary: List products
+      description: 'Current product vocabulary for the authenticated team. Draft and active products
+
+        are returned by default. Use these immutable IDs with `product_id` filters.'
+      parameters:
+      - name: include_retired
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: Include retired products as well as draft and active products.
+      responses:
+        '200':
+          description: Product vocabulary
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+              example:
+                data:
+                - id: 123e4567-e89b-42d3-a456-426614174000
+                  name: Core Platform
+                  description: Shared platform capabilities
+                  aliases:
+                  - Platform
+                  key_features:
+                  - Permissions
+                  - Exports
+                  url: https://example.com/products/core
+                  status: active
+                  source: manual
+                  sort_order: 0
+                  created_at: '2026-04-02T00:00:00Z'
+                  updated_at: '2026-05-01T00:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/AuthenticationUnavailable'
+  /areas:
+    get:
+      operationId: listAreas
+      tags:
+      - Products
+      summary: List product and feature areas
+      x-mint:
+        metadata:
+          description: List active product and feature areas with all-time insight totals and earliest feedback dates, or include archived areas when needed.
+      description: 'Current product-area and feature-area vocabulary. Each area includes its all-time
+
+        insight total and earliest feedback date, so an empty filtered result can be
+
+        distinguished from a scope with little or no coverage. Active areas are returned
+
+        by default.'
+      parameters:
+      - name: include_archived
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: Include archived product areas and feature areas.
+      responses:
+        '200':
+          description: Nested area vocabulary with all-time coverage totals
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductArea'
+              example:
+                data:
+                - id: 223e4567-e89b-42d3-a456-426614174000
+                  name: Operations
+                  description: Operational workflows
+                  status: active
+                  sort_order: 0
+                  insight_count: 84
+                  feedback_since: '2026-01-12T09:00:00Z'
+                  feature_areas:
+                  - id: 323e4567-e89b-42d3-a456-426614174000
+                    name: Exports
+                    description: Data export workflows
+                    status: active
+                    sort_order: 0
+                    insight_count: 84
+                    feedback_since: '2026-01-12T09:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/AuthenticationUnavailable'
+components:
+  schemas:
+    Product:
+      type: object
+      required:
+      - id
+      - name
+      - aliases
+      - key_features
+      - status
+      - source
+      - sort_order
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Immutable product UUID.
+        name:
+          type: string
+          example: Core Platform
+        description:
+          type:
+          - string
+          - 'null'
+        aliases:
+          type: array
+          items:
+            type: string
+        key_features:
+          type: array
+          items:
+            type: string
+        url:
+          type:
+          - string
+          - 'null'
+          format: uri
+        status:
+          type: string
+          enum:
+          - draft
+          - active
+          - retired
+        source:
+          type: string
+          enum:
+          - research
+          - manual
+          - pm_tool
+          - crm
+        sort_order:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+    ProductArea:
+      type: object
+      required:
+      - id
+      - name
+      - status
+      - sort_order
+      - insight_count
+      - feature_areas
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Immutable product-area UUID.
+        name:
+          type: string
+          example: Operations
+        description:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          example: active
+        sort_order:
+          type: integer
+          example: 0
+        insight_count:
+          type: integer
+          example: 84
+          description: Sum of all-time insight counts across returned child feature areas.
+        feedback_since:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Earliest feedback across returned child feature areas.
+        feature_areas:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureArea'
+    FeatureArea:
+      type: object
+      required:
+      - id
+      - name
+      - status
+      - sort_order
+      - insight_count
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Immutable feature-area UUID.
+        name:
+          type: string
+          example: Exports
+        description:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          example: active
+        sort_order:
+          type: integer
+          example: 0
+        insight_count:
+          type: integer
+          example: 84
+          description: All-time insights assigned directly to this feature area.
+        feedback_since:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Earliest feedback assigned to this feature area.
+  responses:
+    Unauthorized:
+      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
+
+        header is absent, or `INVALID_API_KEY` when a key is present but invalid
+
+        or inactive.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: No key provided
+              value:
+                error: API key required.
+                code: NO_API_KEY
+                hint: Send your key in the X-API-Key header.
+            invalid:
+              summary: Key invalid or inactive
+              value:
+                error: Invalid or inactive API key.
+                code: INVALID_API_KEY
+                hint: Create a key in Settings → API Keys.
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: 'Team-scoped API key created in the app (Settings → API Keys).
+
+        Sent as `X-API-Key: <key>` on every request. The header name `apikey`
+
+        is also accepted as an alias.
+
+        '
+x-tagGroups:
+- name: Prioritization
+  tags:
+  - Insights
+  - Products
+  - Themes
+  - Features
+- name: Customers & Context
+  tags:
+  - Customers
+  - Context
+  - Competitors
+- name: Reporting
+  tags:
+  - Analytics
+- name: Account
+  tags:
+  - Integrations
+  - Usage
+- name: Meta
+  tags:
+  - Meta

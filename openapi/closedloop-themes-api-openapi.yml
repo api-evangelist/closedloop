@@ -1,0 +1,816 @@
+openapi: 3.2.0
+info:
+  title: ClosedLoop AI Public Themes API
+  version: 1.8.0
+  x-logo:
+    url: https://app.closedloop.sh/favicon.svg
+    altText: ClosedLoop AI
+  description: '# ClosedLoop AI Public API
+
+
+    Programmatic access to your team''s **product insights**, the structured intelligence
+
+    ClosedLoop AI extracts from customer conversations (Gong, Fireflies, Slack, …) and
+
+    structured feedback (surveys, webhooks).'
+  contact:
+    name: ClosedLoop AI Support
+    email: support@closedloop.sh
+    url: https://closedloop.sh
+  license:
+    name: Proprietary (ClosedLoop Labs LLC)
+    url: https://closedloop.sh/terms
+servers:
+- url: https://api.closedloop.sh/v1
+  description: United States (production)
+- url: https://eu.api.closedloop.sh/v1
+  description: European Union (production)
+security:
+- ApiKeyAuth: []
+tags:
+- name: Themes
+  description: '**Themes**: top-level problem clusters of related insights, RIC-scored. The
+
+    "what should we build?" surface. Each theme rolls up one or more buildable features.'
+paths:
+  /themes:
+    get:
+      operationId: listThemes
+      tags:
+      - Themes
+      summary: List / search themes
+      x-mint:
+        metadata:
+          description: List or search top-level product themes by status, product scope, evidence date, or meaning, with deterministic sorting and pagination.
+      description: 'Top-level problem clusters, RIC-scored, most impactful first. Each theme rolls up
+
+        one or more buildable features. Filter by status, product scope, date, or search
+
+        text. Evidence filters recompute `insight_count`, `unique_customer_count`, and
+
+        `deal_blocker_count` from distinct canonical evidence across the theme and its
+
+        active features; themes with no matching evidence are omitted.
+
+
+        Search is lexical by default: the complete `q` value must occur as one
+
+        case-insensitive substring in the theme title or description. Set
+
+        `search_mode=semantic` to match by meaning instead. Semantic results are ordered
+
+        by similarity descending, then immutable theme ID; this relevance order overrides
+
+        `sort`. If query embedding generation is unavailable, the request returns `503`
+
+        by default. Set `allow_fallback=true` to permit lexical fallback. Always inspect
+
+        the response''s `search_mode` and `min_similarity` fields to determine what was
+
+        applied.
+
+
+        By default, merged themes are excluded. Set `include_retired=true` to add valid
+
+        merged themes to the selected status set. Each returned merged theme has a
+
+        `replacement_theme_id` that points directly to the final surviving theme; callers
+
+        never need to follow a chain. Search and other filters still apply to the retired
+
+        theme''s own stored record and evidence.
+
+
+        The default response is CURATED, not a census: each team has an adaptive
+
+        size floor, computed nightly from that team''s own distribution, and very
+
+        small items below it are excluded — the same set the ClosedLoop AI app
+
+        shows. `pagination.total` counts the curated set. Set `show_all=true` for
+
+        every row regardless of size. Teams with too little data to compute a
+
+        floor are never filtered.
+
+
+        A theme''s size is measured through its live features, so the floor cannot
+
+        be evaluated for a finished theme. `status=shipped` and
+
+        `status=declined` therefore return their rows in full, unfiltered by
+
+        size. `include_retired=true` exempts only the retired rows it adds —
+
+        the live themes alongside them stay filtered.
+
+        `/features` differs — a feature is sized by its own insight count, so its
+
+        floor applies whatever its status.'
+      parameters:
+      - name: show_all
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: Include themes below the team's adaptive size floor. Default false.
+      - name: q
+        in: query
+        schema:
+          type: string
+          maxLength: 500
+        description: Search text. Required when search_mode is semantic.
+      - name: search_mode
+        in: query
+        schema:
+          type: string
+          enum:
+          - lexical
+          - semantic
+          default: lexical
+        description: Lexical substring matching, or semantic matching against theme embeddings.
+      - name: min_similarity
+        in: query
+        schema:
+          type: number
+          format: float
+          minimum: 0.3
+          maximum: 1
+          default: 0.5
+        description: Minimum cosine similarity for semantic search. Valid only when search_mode is semantic.
+      - name: allow_fallback
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: Permit lexical fallback if semantic search is unavailable. Valid only when search_mode is semantic.
+      - name: include_retired
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: Add valid merged themes, each with its final replacement_theme_id. Other filters still apply.
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - active
+          - declined
+          - shipped
+          - parked
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - ric_score
+          - insight_count
+          - unique_customer_count
+          - created_at
+          default: ric_score
+      - $ref: '#/components/parameters/ProductId'
+      - $ref: '#/components/parameters/ProductFeatureId'
+      - $ref: '#/components/parameters/ProductAreaId'
+      - $ref: '#/components/parameters/FeatureAreaId'
+      - $ref: '#/components/parameters/DateFrom'
+      - $ref: '#/components/parameters/DateTo'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: A page of themes
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - pagination
+                - search_mode
+                - min_similarity
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Theme'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                  search_mode:
+                    type: string
+                    enum:
+                    - lexical
+                    - semantic
+                    description: Search mode actually applied. Lexical indicates lexical/default search or an explicitly allowed fallback.
+                  min_similarity:
+                    type:
+                    - number
+                    - 'null'
+                    format: float
+                    description: Applied semantic threshold, or null when search_mode is lexical.
+              example:
+                data:
+                - id: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+                  title: Payment interruption recovery
+                  description: Customers need clearer recovery paths after failed transactions.
+                  ric_score: 7.8
+                  status: active
+                pagination:
+                  total: 1
+                  limit: 50
+                  offset: 0
+                search_mode: semantic
+                min_similarity: 0.5
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ThemesUnavailable'
+  /themes/{id}:
+    get:
+      operationId: getTheme
+      tags:
+      - Themes
+      summary: Get a theme
+      x-mint:
+        metadata:
+          description: Get one product theme with its severity breakdown, affected customers, supporting insights, buildable features, and merge destination.
+      description: 'Theme detail with its evidence: severity breakdown, affected customers, top
+
+        supporting insights, and its features. If this theme was merged into another,
+
+        the response is `410 Gone` with the final surviving `replacement_theme_id`.'
+      parameters:
+      - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Theme detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/ThemeRetired'
+        '503':
+          $ref: '#/components/responses/AuthenticationUnavailable'
+components:
+  schemas:
+    Pagination:
+      type: object
+      required:
+      - total
+      - limit
+      - offset
+      properties:
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+    ThemeDetail:
+      allOf:
+      - $ref: '#/components/schemas/Theme'
+      - type: object
+        properties:
+          severity_breakdown:
+            type: object
+            example:
+              critical: 1
+              high: 8
+              medium: 20
+              low: 5
+          features:
+            type: array
+            description: The buildable features under this theme.
+            items:
+              $ref: '#/components/schemas/Feature'
+          top_insights:
+            type: array
+            items:
+              $ref: '#/components/schemas/InsightSummary'
+          affected_customers:
+            type: array
+            items:
+              $ref: '#/components/schemas/Customer'
+    InsightSummary:
+      type: object
+      description: Compact insight evidence embedded in theme and feature detail responses.
+      required:
+      - id
+      - title
+      - severity
+      - source
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        category:
+          type: string
+        severity:
+          type: string
+          enum:
+          - critical
+          - high
+          - medium
+          - low
+        customer_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        customer_name:
+          type: string
+        source:
+          type: string
+        source_date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+    Customer:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: c0ffee00-0000-4000-8000-000000000001
+        name:
+          type: string
+          example: Acme Co
+        parent_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Parent account (account family), if this is a child property.
+        parent_name:
+          type:
+          - string
+          - 'null'
+          description: Parent account name.
+        domain:
+          type: string
+          example: acme.com
+        industry:
+          type: string
+          example: Hospitality
+        employee_count:
+          type: integer
+          example: 250
+        arr:
+          type:
+          - number
+          - 'null'
+          example: 48000
+          description: 'Annualized recurring revenue: SUM of won-deal annual_value (team currency).'
+        currency:
+          type: string
+          example: USD
+        is_active_customer:
+          type:
+          - boolean
+          - 'null'
+          example: true
+          description: Tri-state. true = a confirmed active customer; false = resolved and not an active customer; null = the account could not be resolved, so the status is unknown. Never read null as false.
+        churn_state:
+          type: string
+          enum:
+          - active
+          - at_risk
+          - churned
+          example: active
+        insight_count:
+          type: integer
+          example: 23
+        last_seen:
+          type: string
+          format: date-time
+          example: '2026-06-10T09:00:00Z'
+    Feature:
+      type: object
+      required:
+      - id
+      - theme_id
+      - title
+      - ric_score
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: b2c3d4e5-f6a7-4b8c-9d0e-000000000002
+        theme_id:
+          type: string
+          format: uuid
+          example: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+          description: The parent theme.
+        title:
+          type: string
+          example: Dark mode toggle in settings
+        description:
+          type: string
+          example: A user-controllable dark / light toggle in the settings panel.
+        ric_score:
+          type: number
+          example: 6.9
+        insight_count:
+          type: integer
+          example: 12
+          description: Supporting insights across every area. On `GET /features` with `feature_area_id`, this is instead recomputed from the insights in the selected area only. See `/features/{id}` for how the detail response derives it.
+        unique_customer_count:
+          type: integer
+          example: 9
+          description: Distinct customers behind those insights, scoped the same way as `insight_count`.
+        product_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Assigned product, if any.
+        product_name:
+          type:
+          - string
+          - 'null'
+          example: Core Platform
+        status:
+          type: string
+          enum:
+          - active
+          - declined
+          - shipped
+          - parked
+          example: active
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-04-05T00:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2026-06-01T00:00:00Z'
+    RetiredTheme:
+      type: object
+      required:
+      - error
+      - code
+      - replacement_theme_id
+      properties:
+        error:
+          type: string
+          example: Theme has been merged into another theme.
+        code:
+          type: string
+          enum:
+          - THEME_RETIRED
+        replacement_theme_id:
+          type: string
+          format: uuid
+          description: Immutable ID of the final surviving theme after following the merge chain.
+    Theme:
+      type: object
+      required:
+      - id
+      - title
+      - ric_score
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+          description: Immutable UUID; never reassigned to another theme.
+        replacement_theme_id:
+          type: string
+          format: uuid
+          description: Present only for a valid merged theme returned by a list request; points directly to the final surviving theme.
+        title:
+          type: string
+          example: Dark mode across the product
+        description:
+          type: string
+          example: Customers repeatedly ask for a dark theme for night-time and accessibility.
+        ric_score:
+          type: number
+          example: 7.8
+          description: Reach × Impact × Confidence.
+        reach:
+          type: number
+          example: 0.62
+        impact:
+          type: number
+          example: 0.8
+        confidence:
+          type: number
+          example: 0.9
+        insight_count:
+          type: integer
+          example: 34
+          description: Supporting insights across the theme.
+        unique_customer_count:
+          type: integer
+          example: 19
+        deal_blocker_count:
+          type: integer
+          example: 4
+          description: Distinct customers represented by deal-blocker evidence.
+        feature_count:
+          type: integer
+          example: 4
+          description: Buildable features under this theme.
+        status:
+          type: string
+          enum:
+          - active
+          - declined
+          - shipped
+          - parked
+          example: active
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-04-02T00:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2026-06-01T00:00:00Z'
+  responses:
+    Unauthorized:
+      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
+
+        header is absent, or `INVALID_API_KEY` when a key is present but invalid
+
+        or inactive.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: No key provided
+              value:
+                error: API key required.
+                code: NO_API_KEY
+                hint: Send your key in the X-API-Key header.
+            invalid:
+              summary: Key invalid or inactive
+              value:
+                error: Invalid or inactive API key.
+                code: INVALID_API_KEY
+                hint: Create a key in Settings → API Keys.
+    NotFound:
+      description: Resource not found (or not in your team)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not found.
+            code: NOT_FOUND
+    RateLimited:
+      description: Semantic theme search rate or concurrency limit reached
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 1
+          description: Suggested delay in seconds before retrying.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Too many semantic search requests. Please retry shortly.
+            code: RATE_LIMIT_EXCEEDED
+    ThemeRetired:
+      description: Theme was merged into another theme
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RetiredTheme'
+          example:
+            error: Theme has been merged into another theme.
+            code: THEME_RETIRED
+            replacement_theme_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+    ThemesUnavailable:
+      description: API-key authentication or semantic theme search is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          examples:
+            authentication:
+              value: 10
+            semantic_search:
+              value: 5
+          description: Wait 10 seconds after an authentication failure, or 5 seconds after a semantic-search failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+            semantic_search:
+              summary: Query embedding generation failed without allowed fallback
+              value:
+                error: Semantic search is temporarily unavailable.
+                code: SEMANTIC_SEARCH_UNAVAILABLE
+                hint: Retry the request, or set allow_fallback=true to permit lexical search.
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+  parameters:
+    ProductAreaId:
+      name: product_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one parent product-area ID from `/areas`.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+      description: Page size (max 200).
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-31'
+      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+
+        Validated by the same rule as `date_from`.
+
+        '
+    ProductId:
+      name: product_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one product ID from `/products`.
+    FeatureAreaId:
+      name: feature_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
+
+        area an insight is filed under; it is NOT a buildable feature ID from
+
+        `/features`, and the two are never interchangeable.
+
+        '
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource UUID.
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
+    DateFrom:
+      name: date_from
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-01'
+      description: 'Inclusive start date, as a real calendar date in `YYYY-MM-DD`.
+
+        Any other form is rejected with `400 VALIDATION_ERROR` - including
+
+        `2026-5-1`, `2026/05/01`, `May 1, 2026`, a bare `2026`, a date-time, and
+
+        impossible dates such as `2026-02-30`.
+
+        '
+    ProductFeatureId:
+      name: product_feature_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one buildable product feature ID from `/features`.
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: 'Team-scoped API key created in the app (Settings → API Keys).
+
+        Sent as `X-API-Key: <key>` on every request. The header name `apikey`
+
+        is also accepted as an alias.
+
+        '
+x-tagGroups:
+- name: Prioritization
+  tags:
+  - Insights
+  - Products
+  - Themes
+  - Features
+- name: Customers & Context
+  tags:
+  - Customers
+  - Context
+  - Competitors
+- name: Reporting
+  tags:
+  - Analytics
+- name: Account
+  tags:
+  - Integrations
+  - Usage
+- name: Meta
+  tags:
+  - Meta
