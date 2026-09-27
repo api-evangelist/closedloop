@@ -80,6 +80,43 @@ paths:
       operationId: getIntegrationsById
       x-operation-id-source: derived
 components:
+  parameters:
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource UUID.
+  responses:
+    NotFound:
+      description: Resource not found (or not in your team)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not found.
+            code: NOT_FOUND
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
   schemas:
     Error:
       type: object
@@ -130,43 +167,6 @@ components:
           type: string
           format: date-time
           example: '2026-01-01T00:00:00Z'
-  parameters:
-    PathId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Resource UUID.
-  responses:
-    NotFound:
-      description: Resource not found (or not in your team)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error: Not found.
-            code: NOT_FOUND
-    AuthenticationUnavailable:
-      description: API-key authentication infrastructure is temporarily unavailable
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-            example: 10
-          description: Wait 10 seconds before retrying authentication.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            authentication:
-              summary: Authentication dependency failure
-              value:
-                error: API key authentication is temporarily unavailable. Please retry shortly.
-                code: API_KEY_AUTH_UNAVAILABLE
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

@@ -262,102 +262,6 @@ paths:
           $ref: '#/components/responses/AuthenticationUnavailable'
 components:
   schemas:
-    Pagination:
-      type: object
-      required:
-      - total
-      - limit
-      - offset
-      properties:
-        total:
-          type: integer
-          description: Total matching records (full set, not the page).
-          example: 508
-        limit:
-          type: integer
-          example: 50
-        offset:
-          type: integer
-          example: 0
-    ThemeDetail:
-      allOf:
-      - $ref: '#/components/schemas/Theme'
-      - type: object
-        properties:
-          severity_breakdown:
-            type: object
-            example:
-              critical: 1
-              high: 8
-              medium: 20
-              low: 5
-          features:
-            type: array
-            description: The buildable features under this theme.
-            items:
-              $ref: '#/components/schemas/Feature'
-          top_insights:
-            type: array
-            items:
-              $ref: '#/components/schemas/InsightSummary'
-          affected_customers:
-            type: array
-            items:
-              $ref: '#/components/schemas/Customer'
-    InsightSummary:
-      type: object
-      description: Compact insight evidence embedded in theme and feature detail responses.
-      required:
-      - id
-      - title
-      - severity
-      - source
-      - created_at
-      properties:
-        id:
-          type: string
-          format: uuid
-        title:
-          type: string
-        category:
-          type: string
-        severity:
-          type: string
-          enum:
-          - critical
-          - high
-          - medium
-          - low
-        customer_id:
-          type:
-          - string
-          - 'null'
-          format: uuid
-        customer_name:
-          type: string
-        source:
-          type: string
-        source_date:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-    Error:
-      type: object
-      required:
-      - error
-      - code
-      properties:
-        error:
-          type: string
-          description: User-safe message.
-        code:
-          type: string
-          example: INVALID_API_KEY
-        hint:
-          type: string
-          description: Optional next step.
     Customer:
       type: object
       required:
@@ -420,68 +324,31 @@ components:
           type: string
           format: date-time
           example: '2026-06-10T09:00:00Z'
-    Feature:
-      type: object
-      required:
-      - id
-      - theme_id
-      - title
-      - ric_score
-      - status
-      properties:
-        id:
-          type: string
-          format: uuid
-          example: b2c3d4e5-f6a7-4b8c-9d0e-000000000002
-        theme_id:
-          type: string
-          format: uuid
-          example: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
-          description: The parent theme.
-        title:
-          type: string
-          example: Dark mode toggle in settings
-        description:
-          type: string
-          example: A user-controllable dark / light toggle in the settings panel.
-        ric_score:
-          type: number
-          example: 6.9
-        insight_count:
-          type: integer
-          example: 12
-          description: Supporting insights across every area. On `GET /features` with `feature_area_id`, this is instead recomputed from the insights in the selected area only. See `/features/{id}` for how the detail response derives it.
-        unique_customer_count:
-          type: integer
-          example: 9
-          description: Distinct customers behind those insights, scoped the same way as `insight_count`.
-        product_id:
-          type:
-          - string
-          - 'null'
-          format: uuid
-          description: Assigned product, if any.
-        product_name:
-          type:
-          - string
-          - 'null'
-          example: Core Platform
-        status:
-          type: string
-          enum:
-          - active
-          - declined
-          - shipped
-          - parked
-          example: active
-        created_at:
-          type: string
-          format: date-time
-          example: '2026-04-05T00:00:00Z'
-        updated_at:
-          type: string
-          format: date-time
-          example: '2026-06-01T00:00:00Z'
+    ThemeDetail:
+      allOf:
+      - $ref: '#/components/schemas/Theme'
+      - type: object
+        properties:
+          severity_breakdown:
+            type: object
+            example:
+              critical: 1
+              high: 8
+              medium: 20
+              low: 5
+          features:
+            type: array
+            description: The buildable features under this theme.
+            items:
+              $ref: '#/components/schemas/Feature'
+          top_insights:
+            type: array
+            items:
+              $ref: '#/components/schemas/InsightSummary'
+          affected_customers:
+            type: array
+            items:
+              $ref: '#/components/schemas/Customer'
     RetiredTheme:
       type: object
       required:
@@ -567,6 +434,139 @@ components:
           type: string
           format: date-time
           example: '2026-06-01T00:00:00Z'
+    InsightSummary:
+      type: object
+      description: Compact insight evidence embedded in theme and feature detail responses.
+      required:
+      - id
+      - title
+      - severity
+      - source
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        category:
+          type: string
+        severity:
+          type: string
+          enum:
+          - critical
+          - high
+          - medium
+          - low
+        customer_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        customer_name:
+          type: string
+        source:
+          type: string
+        source_date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+    Feature:
+      type: object
+      required:
+      - id
+      - theme_id
+      - title
+      - ric_score
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: b2c3d4e5-f6a7-4b8c-9d0e-000000000002
+        theme_id:
+          type: string
+          format: uuid
+          example: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+          description: The parent theme.
+        title:
+          type: string
+          example: Dark mode toggle in settings
+        description:
+          type: string
+          example: A user-controllable dark / light toggle in the settings panel.
+        ric_score:
+          type: number
+          example: 6.9
+        insight_count:
+          type: integer
+          example: 12
+          description: Supporting insights across every area. On `GET /features` with `feature_area_id`, this is instead recomputed from the insights in the selected area only. See `/features/{id}` for how the detail response derives it.
+        unique_customer_count:
+          type: integer
+          example: 9
+          description: Distinct customers behind those insights, scoped the same way as `insight_count`.
+        product_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Assigned product, if any.
+        product_name:
+          type:
+          - string
+          - 'null'
+          example: Core Platform
+        status:
+          type: string
+          enum:
+          - active
+          - declined
+          - shipped
+          - parked
+          example: active
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-04-05T00:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2026-06-01T00:00:00Z'
+    Pagination:
+      type: object
+      required:
+      - total
+      - limit
+      - offset
+      properties:
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
   responses:
     Unauthorized:
       description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
@@ -593,40 +593,41 @@ components:
                 error: Invalid or inactive API key.
                 code: INVALID_API_KEY
                 hint: Create a key in Settings → API Keys.
-    NotFound:
-      description: Resource not found (or not in your team)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error: Not found.
-            code: NOT_FOUND
-    RateLimited:
-      description: Semantic theme search rate or concurrency limit reached
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
       headers:
         Retry-After:
           schema:
             type: integer
-            example: 1
-          description: Suggested delay in seconds before retrying.
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          example:
-            error: Too many semantic search requests. Please retry shortly.
-            code: RATE_LIMIT_EXCEEDED
-    ThemeRetired:
-      description: Theme was merged into another theme
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/RetiredTheme'
-          example:
-            error: Theme has been merged into another theme.
-            code: THEME_RETIRED
-            replacement_theme_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
     ThemesUnavailable:
       description: API-key authentication or semantic theme search is temporarily unavailable
       headers:
@@ -655,78 +656,41 @@ components:
                 error: Semantic search is temporarily unavailable.
                 code: SEMANTIC_SEARCH_UNAVAILABLE
                 hint: Retry the request, or set allow_fallback=true to permit lexical search.
-    ValidationError:
-      description: Invalid query parameter, filter combination, or cursor
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            uuid:
-              summary: Invalid filter ID
-              value:
-                error: product_id must be a UUID.
-                code: VALIDATION_ERROR
-            cursor:
-              summary: Invalid cursor
-              value:
-                error: cursor is invalid or expired
-                code: VALIDATION_ERROR
-    AuthenticationUnavailable:
-      description: API-key authentication infrastructure is temporarily unavailable
+    RateLimited:
+      description: Semantic theme search rate or concurrency limit reached
       headers:
         Retry-After:
           schema:
             type: integer
-            example: 10
-          description: Wait 10 seconds before retrying authentication.
+            example: 1
+          description: Suggested delay in seconds before retrying.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          examples:
-            authentication:
-              summary: Authentication dependency failure
-              value:
-                error: API key authentication is temporarily unavailable. Please retry shortly.
-                code: API_KEY_AUTH_UNAVAILABLE
+          example:
+            error: Too many semantic search requests. Please retry shortly.
+            code: RATE_LIMIT_EXCEEDED
+    ThemeRetired:
+      description: Theme was merged into another theme
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RetiredTheme'
+          example:
+            error: Theme has been merged into another theme.
+            code: THEME_RETIRED
+            replacement_theme_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+    NotFound:
+      description: Resource not found (or not in your team)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not found.
+            code: NOT_FOUND
   parameters:
-    ProductAreaId:
-      name: product_area_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one parent product-area ID from `/areas`.
-    Limit:
-      name: limit
-      in: query
-      schema:
-        type: integer
-        default: 50
-        minimum: 1
-        maximum: 200
-      description: Page size (max 200).
-    DateTo:
-      name: date_to
-      in: query
-      schema:
-        type: string
-        format: date
-        pattern: ^\d{4}-\d{2}-\d{2}$
-      example: '2026-05-31'
-      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
-
-        Validated by the same rule as `date_from`.
-
-        '
-    ProductId:
-      name: product_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one product ID from `/products`.
     FeatureAreaId:
       name: feature_area_id
       in: query
@@ -740,22 +704,6 @@ components:
         `/features`, and the two are never interchangeable.
 
         '
-    PathId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Resource UUID.
-    Offset:
-      name: offset
-      in: query
-      schema:
-        type: integer
-        default: 0
-        minimum: 0
-      description: Number of records to skip.
     DateFrom:
       name: date_from
       in: query
@@ -773,6 +721,58 @@ components:
         impossible dates such as `2026-02-30`.
 
         '
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource UUID.
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-31'
+      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+
+        Validated by the same rule as `date_from`.
+
+        '
+    ProductAreaId:
+      name: product_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one parent product-area ID from `/areas`.
+    ProductId:
+      name: product_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one product ID from `/products`.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+      description: Page size (max 200).
     ProductFeatureId:
       name: product_feature_id
       in: query

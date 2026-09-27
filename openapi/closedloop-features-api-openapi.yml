@@ -324,6 +324,21 @@ paths:
           $ref: '#/components/responses/AuthenticationUnavailable'
 components:
   parameters:
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource UUID.
+    ProductId:
+      name: product_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one product ID from `/products`.
     Limit:
       name: limit
       in: query
@@ -333,21 +348,12 @@ components:
         minimum: 1
         maximum: 200
       description: Page size (max 200).
-    ProductId:
-      name: product_id
+    Query:
+      name: q
       in: query
       schema:
         type: string
-        format: uuid
-      description: Filter by one product ID from `/products`.
-    PathId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Resource UUID.
+      description: Free-text search over titles and content.
     Offset:
       name: offset
       in: query
@@ -356,12 +362,6 @@ components:
         default: 0
         minimum: 0
       description: Number of records to skip.
-    Query:
-      name: q
-      in: query
-      schema:
-        type: string
-      description: Free-text search over titles and content.
     FeatureAreaId:
       name: feature_area_id
       in: query
@@ -376,129 +376,6 @@ components:
 
         '
   schemas:
-    Error:
-      type: object
-      required:
-      - error
-      - code
-      properties:
-        error:
-          type: string
-          description: User-safe message.
-        code:
-          type: string
-          example: INVALID_API_KEY
-        hint:
-          type: string
-          description: Optional next step.
-    Pagination:
-      type: object
-      required:
-      - total
-      - limit
-      - offset
-      properties:
-        total:
-          type: integer
-          description: Total matching records (full set, not the page).
-          example: 508
-        limit:
-          type: integer
-          example: 50
-        offset:
-          type: integer
-          example: 0
-    Customer:
-      type: object
-      required:
-      - id
-      - name
-      properties:
-        id:
-          type: string
-          format: uuid
-          example: c0ffee00-0000-4000-8000-000000000001
-        name:
-          type: string
-          example: Acme Co
-        parent_id:
-          type:
-          - string
-          - 'null'
-          format: uuid
-          description: Parent account (account family), if this is a child property.
-        parent_name:
-          type:
-          - string
-          - 'null'
-          description: Parent account name.
-        domain:
-          type: string
-          example: acme.com
-        industry:
-          type: string
-          example: Hospitality
-        employee_count:
-          type: integer
-          example: 250
-        arr:
-          type:
-          - number
-          - 'null'
-          example: 48000
-          description: 'Annualized recurring revenue: SUM of won-deal annual_value (team currency).'
-        currency:
-          type: string
-          example: USD
-        is_active_customer:
-          type:
-          - boolean
-          - 'null'
-          example: true
-          description: Tri-state. true = a confirmed active customer; false = resolved and not an active customer; null = the account could not be resolved, so the status is unknown. Never read null as false.
-        churn_state:
-          type: string
-          enum:
-          - active
-          - at_risk
-          - churned
-          example: active
-        insight_count:
-          type: integer
-          example: 23
-        last_seen:
-          type: string
-          format: date-time
-          example: '2026-06-10T09:00:00Z'
-    FeatureDetail:
-      allOf:
-      - $ref: '#/components/schemas/Feature'
-      - type: object
-        properties:
-          insight_count:
-            type: integer
-            description: Distinct supporting insights across every area, counted from the feature's current evidence. This detail response is never scoped by `feature_area_id`, and it can differ from the same field on `GET /features` without a filter, which reports the stored rollup.
-          unique_customer_count:
-            type: integer
-            description: Distinct customers behind those insights, counted the same way as `insight_count` above.
-          deal_blocker_count:
-            type: integer
-            description: Distinct customers represented by deal-blocker evidence.
-          severity_breakdown:
-            type: object
-            example:
-              critical: 0
-              high: 3
-              medium: 7
-              low: 2
-          top_insights:
-            type: array
-            items:
-              $ref: '#/components/schemas/InsightSummary'
-          affected_customers:
-            type: array
-            items:
-              $ref: '#/components/schemas/Customer'
     Feature:
       type: object
       required:
@@ -561,6 +438,114 @@ components:
           type: string
           format: date-time
           example: '2026-06-01T00:00:00Z'
+    Customer:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: c0ffee00-0000-4000-8000-000000000001
+        name:
+          type: string
+          example: Acme Co
+        parent_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Parent account (account family), if this is a child property.
+        parent_name:
+          type:
+          - string
+          - 'null'
+          description: Parent account name.
+        domain:
+          type: string
+          example: acme.com
+        industry:
+          type: string
+          example: Hospitality
+        employee_count:
+          type: integer
+          example: 250
+        arr:
+          type:
+          - number
+          - 'null'
+          example: 48000
+          description: 'Annualized recurring revenue: SUM of won-deal annual_value (team currency).'
+        currency:
+          type: string
+          example: USD
+        is_active_customer:
+          type:
+          - boolean
+          - 'null'
+          example: true
+          description: Tri-state. true = a confirmed active customer; false = resolved and not an active customer; null = the account could not be resolved, so the status is unknown. Never read null as false.
+        churn_state:
+          type: string
+          enum:
+          - active
+          - at_risk
+          - churned
+          example: active
+        insight_count:
+          type: integer
+          example: 23
+        last_seen:
+          type: string
+          format: date-time
+          example: '2026-06-10T09:00:00Z'
+    Pagination:
+      type: object
+      required:
+      - total
+      - limit
+      - offset
+      properties:
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+    FeatureDetail:
+      allOf:
+      - $ref: '#/components/schemas/Feature'
+      - type: object
+        properties:
+          insight_count:
+            type: integer
+            description: Distinct supporting insights across every area, counted from the feature's current evidence. This detail response is never scoped by `feature_area_id`, and it can differ from the same field on `GET /features` without a filter, which reports the stored rollup.
+          unique_customer_count:
+            type: integer
+            description: Distinct customers behind those insights, counted the same way as `insight_count` above.
+          deal_blocker_count:
+            type: integer
+            description: Distinct customers represented by deal-blocker evidence.
+          severity_breakdown:
+            type: object
+            example:
+              critical: 0
+              high: 3
+              medium: 7
+              low: 2
+          top_insights:
+            type: array
+            items:
+              $ref: '#/components/schemas/InsightSummary'
+          affected_customers:
+            type: array
+            items:
+              $ref: '#/components/schemas/Customer'
     InsightSummary:
       type: object
       description: Compact insight evidence embedded in theme and feature detail responses.
@@ -600,7 +585,31 @@ components:
         created_at:
           type: string
           format: date-time
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
   responses:
+    NotFound:
+      description: Resource not found (or not in your team)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not found.
+            code: NOT_FOUND
     Unauthorized:
       description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
 
@@ -626,32 +635,6 @@ components:
                 error: Invalid or inactive API key.
                 code: INVALID_API_KEY
                 hint: Create a key in Settings → API Keys.
-    NotFound:
-      description: Resource not found (or not in your team)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error: Not found.
-            code: NOT_FOUND
-    ValidationError:
-      description: Invalid query parameter, filter combination, or cursor
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            uuid:
-              summary: Invalid filter ID
-              value:
-                error: product_id must be a UUID.
-                code: VALIDATION_ERROR
-            cursor:
-              summary: Invalid cursor
-              value:
-                error: cursor is invalid or expired
-                code: VALIDATION_ERROR
     AuthenticationUnavailable:
       description: API-key authentication infrastructure is temporarily unavailable
       headers:
@@ -670,6 +653,23 @@ components:
               value:
                 error: API key authentication is temporarily unavailable. Please retry shortly.
                 code: API_KEY_AUTH_UNAVAILABLE
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

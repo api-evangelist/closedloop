@@ -141,6 +141,47 @@ paths:
           $ref: '#/components/responses/AuthenticationUnavailable'
 components:
   schemas:
+    ProductArea:
+      type: object
+      required:
+      - id
+      - name
+      - status
+      - sort_order
+      - insight_count
+      - feature_areas
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Immutable product-area UUID.
+        name:
+          type: string
+          example: Operations
+        description:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          example: active
+        sort_order:
+          type: integer
+          example: 0
+        insight_count:
+          type: integer
+          example: 84
+          description: Sum of all-time insight counts across returned child feature areas.
+        feedback_since:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Earliest feedback across returned child feature areas.
+        feature_areas:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureArea'
     Product:
       type: object
       required:
@@ -214,47 +255,6 @@ components:
         hint:
           type: string
           description: Optional next step.
-    ProductArea:
-      type: object
-      required:
-      - id
-      - name
-      - status
-      - sort_order
-      - insight_count
-      - feature_areas
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Immutable product-area UUID.
-        name:
-          type: string
-          example: Operations
-        description:
-          type:
-          - string
-          - 'null'
-        status:
-          type: string
-          example: active
-        sort_order:
-          type: integer
-          example: 0
-        insight_count:
-          type: integer
-          example: 84
-          description: Sum of all-time insight counts across returned child feature areas.
-        feedback_since:
-          type:
-          - string
-          - 'null'
-          format: date-time
-          description: Earliest feedback across returned child feature areas.
-        feature_areas:
-          type: array
-          items:
-            $ref: '#/components/schemas/FeatureArea'
     FeatureArea:
       type: object
       required:

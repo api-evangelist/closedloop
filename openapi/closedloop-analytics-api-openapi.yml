@@ -176,49 +176,72 @@ paths:
       operationId: getFacets
       x-operation-id-source: derived
 components:
+  parameters:
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-31'
+      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+
+        Validated by the same rule as `date_from`.
+
+        '
+    ProductAreaId:
+      name: product_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one parent product-area ID from `/areas`.
+    ProductId:
+      name: product_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one product ID from `/products`.
+    ProductFeatureId:
+      name: product_feature_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one buildable product feature ID from `/features`.
+    FeatureAreaId:
+      name: feature_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
+
+        area an insight is filed under; it is NOT a buildable feature ID from
+
+        `/features`, and the two are never interchangeable.
+
+        '
+    DateFrom:
+      name: date_from
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-01'
+      description: 'Inclusive start date, as a real calendar date in `YYYY-MM-DD`.
+
+        Any other form is rejected with `400 VALIDATION_ERROR` - including
+
+        `2026-5-1`, `2026/05/01`, `May 1, 2026`, a bare `2026`, a date-time, and
+
+        impossible dates such as `2026-02-30`.
+
+        '
   schemas:
-    TrendSeries:
-      type: object
-      properties:
-        metric:
-          type: string
-          example: insights
-        granularity:
-          type: string
-          example: week
-        feedback_since:
-          type: string
-          format: date-time
-          example: '2026-02-01T00:00:00Z'
-        note:
-          type: string
-          example: Buckets before feedback_since are empty due to coverage, not zero activity.
-        points:
-          type: array
-          items:
-            type: object
-            properties:
-              period:
-                type: string
-                example: '2026-05-11'
-              value:
-                type: integer
-                example: 34
-    Error:
-      type: object
-      required:
-      - error
-      - code
-      properties:
-        error:
-          type: string
-          description: User-safe message.
-        code:
-          type: string
-          example: INVALID_API_KEY
-        hint:
-          type: string
-          description: Optional next step.
     Coverage:
       type: object
       required:
@@ -344,71 +367,48 @@ components:
               - 'null'
               format: date-time
               description: Earliest feedback for the authenticated team.
-  parameters:
-    ProductAreaId:
-      name: product_area_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one parent product-area ID from `/areas`.
-    DateTo:
-      name: date_to
-      in: query
-      schema:
-        type: string
-        format: date
-        pattern: ^\d{4}-\d{2}-\d{2}$
-      example: '2026-05-31'
-      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
-
-        Validated by the same rule as `date_from`.
-
-        '
-    DateFrom:
-      name: date_from
-      in: query
-      schema:
-        type: string
-        format: date
-        pattern: ^\d{4}-\d{2}-\d{2}$
-      example: '2026-05-01'
-      description: 'Inclusive start date, as a real calendar date in `YYYY-MM-DD`.
-
-        Any other form is rejected with `400 VALIDATION_ERROR` - including
-
-        `2026-5-1`, `2026/05/01`, `May 1, 2026`, a bare `2026`, a date-time, and
-
-        impossible dates such as `2026-02-30`.
-
-        '
-    ProductId:
-      name: product_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one product ID from `/products`.
-    ProductFeatureId:
-      name: product_feature_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one buildable product feature ID from `/features`.
-    FeatureAreaId:
-      name: feature_area_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
-
-        area an insight is filed under; it is NOT a buildable feature ID from
-
-        `/features`, and the two are never interchangeable.
-
-        '
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+    TrendSeries:
+      type: object
+      properties:
+        metric:
+          type: string
+          example: insights
+        granularity:
+          type: string
+          example: week
+        feedback_since:
+          type: string
+          format: date-time
+          example: '2026-02-01T00:00:00Z'
+        note:
+          type: string
+          example: Buckets before feedback_since are empty due to coverage, not zero activity.
+        points:
+          type: array
+          items:
+            type: object
+            properties:
+              period:
+                type: string
+                example: '2026-05-11'
+              value:
+                type: integer
+                example: 34
   responses:
     Unauthorized:
       description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
@@ -435,23 +435,6 @@ components:
                 error: Invalid or inactive API key.
                 code: INVALID_API_KEY
                 hint: Create a key in Settings → API Keys.
-    ValidationError:
-      description: Invalid query parameter, filter combination, or cursor
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            uuid:
-              summary: Invalid filter ID
-              value:
-                error: product_id must be a UUID.
-                code: VALIDATION_ERROR
-            cursor:
-              summary: Invalid cursor
-              value:
-                error: cursor is invalid or expired
-                code: VALIDATION_ERROR
     AuthenticationUnavailable:
       description: API-key authentication infrastructure is temporarily unavailable
       headers:
@@ -470,6 +453,23 @@ components:
               value:
                 error: API key authentication is temporarily unavailable. Please retry shortly.
                 code: API_KEY_AUTH_UNAVAILABLE
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

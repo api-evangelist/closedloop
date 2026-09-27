@@ -213,24 +213,125 @@ paths:
         '503':
           $ref: '#/components/responses/AuthenticationUnavailable'
 components:
+  responses:
+    Unauthorized:
+      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
+
+        header is absent, or `INVALID_API_KEY` when a key is present but invalid
+
+        or inactive.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: No key provided
+              value:
+                error: API key required.
+                code: NO_API_KEY
+                hint: Send your key in the X-API-Key header.
+            invalid:
+              summary: Key invalid or inactive
+              value:
+                error: Invalid or inactive API key.
+                code: INVALID_API_KEY
+                hint: Create a key in Settings → API Keys.
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
+    InsightsUnavailable:
+      description: API-key authentication or incremental insight export is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          examples:
+            authentication:
+              value: 10
+            export:
+              value: 5
+          description: Wait 10 seconds after an authentication failure, or 5 seconds after an export failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+            export:
+              summary: Safe incremental-export watermark unavailable
+              value:
+                error: Incremental export is temporarily unavailable.
+                code: EXPORT_UNAVAILABLE
+                hint: Retry the request in a few seconds.
+    NotFound:
+      description: Resource not found (or not in your team)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not found.
+            code: NOT_FOUND
   schemas:
-    Pagination:
+    ProductFeatureAssociation:
       type: object
       required:
-      - total
-      - limit
-      - offset
+      - id
+      - title
+      - product_id
       properties:
-        total:
-          type: integer
-          description: Total matching records (full set, not the page).
-          example: 508
-        limit:
-          type: integer
-          example: 50
-        offset:
-          type: integer
-          example: 0
+        id:
+          type: string
+          format: uuid
+          description: Product-feature UUID accepted by the product_feature_id filter.
+        title:
+          type: string
+          example: Scheduled exports
+        product_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Associated product UUID, or null when the feature is not assigned to a product.
     ProductAssociation:
       type: object
       required:
@@ -284,30 +385,23 @@ components:
             type: string
             format: uri
             example: https://gong.io/calls/abc123
-    CursorPagination:
+    Pagination:
       type: object
       required:
+      - total
       - limit
-      - has_more
-      - next_cursor
-      - sync_until
+      - offset
       properties:
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
         limit:
           type: integer
-          example: 200
-        has_more:
-          type: boolean
-          example: true
-        next_cursor:
-          type:
-          - string
-          - 'null'
-          description: Opaque cursor for the next page; null on the final page.
-        sync_until:
-          type: string
-          format: date-time
-          example: '2026-05-14T10:30:00.123456Z'
-          description: Fixed upper watermark. Commit it as the next checkpoint only after the final page.
+          example: 50
+        offset:
+          type: integer
+          example: 0
     Error:
       type: object
       required:
@@ -323,26 +417,6 @@ components:
         hint:
           type: string
           description: Optional next step.
-    ProductFeatureAssociation:
-      type: object
-      required:
-      - id
-      - title
-      - product_id
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Product-feature UUID accepted by the product_feature_id filter.
-        title:
-          type: string
-          example: Scheduled exports
-        product_id:
-          type:
-          - string
-          - 'null'
-          format: uuid
-          description: Associated product UUID, or null when the feature is not assigned to a product.
     Insight:
       type: object
       required:
@@ -438,170 +512,31 @@ components:
             '
           items:
             $ref: '#/components/schemas/ProductFeatureAssociation'
-  responses:
-    Unauthorized:
-      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
-
-        header is absent, or `INVALID_API_KEY` when a key is present but invalid
-
-        or inactive.
-
-        '
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            missing:
-              summary: No key provided
-              value:
-                error: API key required.
-                code: NO_API_KEY
-                hint: Send your key in the X-API-Key header.
-            invalid:
-              summary: Key invalid or inactive
-              value:
-                error: Invalid or inactive API key.
-                code: INVALID_API_KEY
-                hint: Create a key in Settings → API Keys.
-    NotFound:
-      description: Resource not found (or not in your team)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error: Not found.
-            code: NOT_FOUND
-    InsightsUnavailable:
-      description: API-key authentication or incremental insight export is temporarily unavailable
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-          examples:
-            authentication:
-              value: 10
-            export:
-              value: 5
-          description: Wait 10 seconds after an authentication failure, or 5 seconds after an export failure.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            authentication:
-              summary: Authentication dependency failure
-              value:
-                error: API key authentication is temporarily unavailable. Please retry shortly.
-                code: API_KEY_AUTH_UNAVAILABLE
-            export:
-              summary: Safe incremental-export watermark unavailable
-              value:
-                error: Incremental export is temporarily unavailable.
-                code: EXPORT_UNAVAILABLE
-                hint: Retry the request in a few seconds.
-    ValidationError:
-      description: Invalid query parameter, filter combination, or cursor
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            uuid:
-              summary: Invalid filter ID
-              value:
-                error: product_id must be a UUID.
-                code: VALIDATION_ERROR
-            cursor:
-              summary: Invalid cursor
-              value:
-                error: cursor is invalid or expired
-                code: VALIDATION_ERROR
-    AuthenticationUnavailable:
-      description: API-key authentication infrastructure is temporarily unavailable
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-            example: 10
-          description: Wait 10 seconds before retrying authentication.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            authentication:
-              summary: Authentication dependency failure
-              value:
-                error: API key authentication is temporarily unavailable. Please retry shortly.
-                code: API_KEY_AUTH_UNAVAILABLE
+    CursorPagination:
+      type: object
+      required:
+      - limit
+      - has_more
+      - next_cursor
+      - sync_until
+      properties:
+        limit:
+          type: integer
+          example: 200
+        has_more:
+          type: boolean
+          example: true
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          description: Opaque cursor for the next page; null on the final page.
+        sync_until:
+          type: string
+          format: date-time
+          example: '2026-05-14T10:30:00.123456Z'
+          description: Fixed upper watermark. Commit it as the next checkpoint only after the final page.
   parameters:
-    ProductAreaId:
-      name: product_area_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one parent product-area ID from `/areas`.
-    Limit:
-      name: limit
-      in: query
-      schema:
-        type: integer
-        default: 50
-        minimum: 1
-        maximum: 200
-      description: Page size (max 200).
-    DateTo:
-      name: date_to
-      in: query
-      schema:
-        type: string
-        format: date
-        pattern: ^\d{4}-\d{2}-\d{2}$
-      example: '2026-05-31'
-      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
-
-        Validated by the same rule as `date_from`.
-
-        '
-    ProductId:
-      name: product_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one product ID from `/products`.
-    FeatureAreaId:
-      name: feature_area_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
-
-        area an insight is filed under; it is NOT a buildable feature ID from
-
-        `/features`, and the two are never interchangeable.
-
-        '
-    PathId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Resource UUID.
-    Offset:
-      name: offset
-      in: query
-      schema:
-        type: integer
-        default: 0
-        minimum: 0
-      description: Number of records to skip.
     Query:
       name: q
       in: query
@@ -625,6 +560,71 @@ components:
         impossible dates such as `2026-02-30`.
 
         '
+    FeatureAreaId:
+      name: feature_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
+
+        area an insight is filed under; it is NOT a buildable feature ID from
+
+        `/features`, and the two are never interchangeable.
+
+        '
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-31'
+      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+
+        Validated by the same rule as `date_from`.
+
+        '
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource UUID.
+    ProductAreaId:
+      name: product_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one parent product-area ID from `/areas`.
+    ProductId:
+      name: product_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one product ID from `/products`.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+      description: Page size (max 200).
     ProductFeatureId:
       name: product_feature_id
       in: query
