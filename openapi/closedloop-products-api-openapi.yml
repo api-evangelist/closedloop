@@ -141,6 +141,21 @@ paths:
           $ref: '#/components/responses/AuthenticationUnavailable'
 components:
   schemas:
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
     ProductArea:
       type: object
       required:
@@ -240,21 +255,6 @@ components:
         updated_at:
           type: string
           format: date-time
-    Error:
-      type: object
-      required:
-      - error
-      - code
-      properties:
-        error:
-          type: string
-          description: User-safe message.
-        code:
-          type: string
-          example: INVALID_API_KEY
-        hint:
-          type: string
-          description: Optional next step.
     FeatureArea:
       type: object
       required:
@@ -292,6 +292,24 @@ components:
           format: date-time
           description: Earliest feedback assigned to this feature area.
   responses:
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
     Unauthorized:
       description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
 
@@ -317,24 +335,6 @@ components:
                 error: Invalid or inactive API key.
                 code: INVALID_API_KEY
                 hint: Create a key in Settings → API Keys.
-    AuthenticationUnavailable:
-      description: API-key authentication infrastructure is temporarily unavailable
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-            example: 10
-          description: Wait 10 seconds before retrying authentication.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            authentication:
-              summary: Authentication dependency failure
-              value:
-                error: API key authentication is temporarily unavailable. Please retry shortly.
-                code: API_KEY_AUTH_UNAVAILABLE
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

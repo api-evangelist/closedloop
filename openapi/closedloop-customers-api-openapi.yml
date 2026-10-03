@@ -103,14 +103,6 @@ paths:
       x-operation-id-source: derived
 components:
   parameters:
-    PathId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Resource UUID.
     Query:
       name: q
       in: query
@@ -126,6 +118,14 @@ components:
         minimum: 1
         maximum: 200
       description: Page size (max 200).
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource UUID.
     Offset:
       name: offset
       in: query
@@ -135,6 +135,38 @@ components:
         minimum: 0
       description: Number of records to skip.
   schemas:
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+    Pagination:
+      type: object
+      required:
+      - total
+      - limit
+      - offset
+      properties:
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
     Customer:
       type: object
       required:
@@ -197,38 +229,6 @@ components:
           type: string
           format: date-time
           example: '2026-06-10T09:00:00Z'
-    Pagination:
-      type: object
-      required:
-      - total
-      - limit
-      - offset
-      properties:
-        total:
-          type: integer
-          description: Total matching records (full set, not the page).
-          example: 508
-        limit:
-          type: integer
-          example: 50
-        offset:
-          type: integer
-          example: 0
-    Error:
-      type: object
-      required:
-      - error
-      - code
-      properties:
-        error:
-          type: string
-          description: User-safe message.
-        code:
-          type: string
-          example: INVALID_API_KEY
-        hint:
-          type: string
-          description: Optional next step.
   responses:
     NotFound:
       description: Resource not found (or not in your team)

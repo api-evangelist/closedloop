@@ -134,19 +134,6 @@ paths:
       x-operation-id-source: derived
 components:
   parameters:
-    DateTo:
-      name: date_to
-      in: query
-      schema:
-        type: string
-        format: date
-        pattern: ^\d{4}-\d{2}-\d{2}$
-      example: '2026-05-31'
-      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
-
-        Validated by the same rule as `date_from`.
-
-        '
     Query:
       name: q
       in: query
@@ -162,14 +149,6 @@ components:
         minimum: 1
         maximum: 200
       description: Page size (max 200).
-    Offset:
-      name: offset
-      in: query
-      schema:
-        type: integer
-        default: 0
-        minimum: 0
-      description: Number of records to skip.
     DateFrom:
       name: date_from
       in: query
@@ -187,76 +166,43 @@ components:
         impossible dates such as `2026-02-30`.
 
         '
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-31'
+      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+
+        Validated by the same rule as `date_from`.
+
+        '
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
   schemas:
-    Competitor:
+    Error:
       type: object
       required:
-      - id
-      - name
+      - error
+      - code
       properties:
-        id:
+        error:
           type: string
-          format: uuid
-          example: 0e11e100-0000-4000-8000-000000000001
-        name:
+          description: User-safe message.
+        code:
           type: string
-          example: Competitor X
-        customer_count:
-          type: integer
-          example: 12
-          description: Distinct customers who mentioned this competitor.
-        total_mentions:
-          type: integer
-          example: 41
-          description: Every mention naming this competitor, including mentions that name several. Context only; read `pressure` for the trend.
-        trend:
+          example: INVALID_API_KEY
+        hint:
           type: string
-          enum:
-          - rising
-          - steady
-          - falling
-          example: rising
-          description: Direction of the pressure series.
-        pressure:
-          type: array
-          description: Mention volume per period is the pressure trend. A single sum says nothing; the change over time matters.
-          items:
-            type: object
-            properties:
-              period:
-                type: string
-                example: '2026-05-11'
-              mentions:
-                type: integer
-                example: 7
-        first_mentioned:
-          type: string
-          format: date-time
-          example: '2026-03-02T00:00:00Z'
-        last_mentioned:
-          type: string
-          format: date-time
-          example: '2026-06-18T00:00:00Z'
-        summary:
-          type: string
-          example: Most-cited alternative on lost deals; wins on native reporting.
-    Pagination:
-      type: object
-      required:
-      - total
-      - limit
-      - offset
-      properties:
-        total:
-          type: integer
-          description: Total matching records (full set, not the page).
-          example: 508
-        limit:
-          type: integer
-          example: 50
-        offset:
-          type: integer
-          example: 0
+          description: Optional next step.
     CompetitorMention:
       type: object
       required:
@@ -309,21 +255,75 @@ components:
           type: string
           format: date-time
           example: '2026-05-20T14:00:00Z'
-    Error:
+    Pagination:
       type: object
       required:
-      - error
-      - code
+      - total
+      - limit
+      - offset
       properties:
-        error:
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+    Competitor:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
           type: string
-          description: User-safe message.
-        code:
+          format: uuid
+          example: 0e11e100-0000-4000-8000-000000000001
+        name:
           type: string
-          example: INVALID_API_KEY
-        hint:
+          example: Competitor X
+        customer_count:
+          type: integer
+          example: 12
+          description: Distinct customers who mentioned this competitor.
+        total_mentions:
+          type: integer
+          example: 41
+          description: Every mention naming this competitor, including mentions that name several. Context only; read `pressure` for the trend.
+        trend:
           type: string
-          description: Optional next step.
+          enum:
+          - rising
+          - steady
+          - falling
+          example: rising
+          description: Direction of the pressure series.
+        pressure:
+          type: array
+          description: Mention volume per period is the pressure trend. A single sum says nothing; the change over time matters.
+          items:
+            type: object
+            properties:
+              period:
+                type: string
+                example: '2026-05-11'
+              mentions:
+                type: integer
+                example: 7
+        first_mentioned:
+          type: string
+          format: date-time
+          example: '2026-03-02T00:00:00Z'
+        last_mentioned:
+          type: string
+          format: date-time
+          example: '2026-06-18T00:00:00Z'
+        summary:
+          type: string
+          example: Most-cited alternative on lost deals; wins on native reporting.
   responses:
     AuthenticationUnavailable:
       description: API-key authentication infrastructure is temporarily unavailable

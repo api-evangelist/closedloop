@@ -324,21 +324,12 @@ paths:
           $ref: '#/components/responses/AuthenticationUnavailable'
 components:
   parameters:
-    PathId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Resource UUID.
-    ProductId:
-      name: product_id
+    Query:
+      name: q
       in: query
       schema:
         type: string
-        format: uuid
-      description: Filter by one product ID from `/products`.
+      description: Free-text search over titles and content.
     Limit:
       name: limit
       in: query
@@ -348,20 +339,14 @@ components:
         minimum: 1
         maximum: 200
       description: Page size (max 200).
-    Query:
-      name: q
-      in: query
+    PathId:
+      name: id
+      in: path
+      required: true
       schema:
         type: string
-      description: Free-text search over titles and content.
-    Offset:
-      name: offset
-      in: query
-      schema:
-        type: integer
-        default: 0
-        minimum: 0
-      description: Number of records to skip.
+        format: uuid
+      description: Resource UUID.
     FeatureAreaId:
       name: feature_area_id
       in: query
@@ -375,7 +360,66 @@ components:
         `/features`, and the two are never interchangeable.
 
         '
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
+    ProductId:
+      name: product_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one product ID from `/products`.
   schemas:
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+    FeatureDetail:
+      allOf:
+      - $ref: '#/components/schemas/Feature'
+      - type: object
+        properties:
+          insight_count:
+            type: integer
+            description: Distinct supporting insights across every area, counted from the feature's current evidence. This detail response is never scoped by `feature_area_id`, and it can differ from the same field on `GET /features` without a filter, which reports the stored rollup.
+          unique_customer_count:
+            type: integer
+            description: Distinct customers behind those insights, counted the same way as `insight_count` above.
+          deal_blocker_count:
+            type: integer
+            description: Distinct customers represented by deal-blocker evidence.
+          severity_breakdown:
+            type: object
+            example:
+              critical: 0
+              high: 3
+              medium: 7
+              low: 2
+          top_insights:
+            type: array
+            items:
+              $ref: '#/components/schemas/InsightSummary'
+          affected_customers:
+            type: array
+            items:
+              $ref: '#/components/schemas/Customer'
     Feature:
       type: object
       required:
@@ -438,6 +482,62 @@ components:
           type: string
           format: date-time
           example: '2026-06-01T00:00:00Z'
+    InsightSummary:
+      type: object
+      description: Compact insight evidence embedded in theme and feature detail responses.
+      required:
+      - id
+      - title
+      - severity
+      - source
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        category:
+          type: string
+        severity:
+          type: string
+          enum:
+          - critical
+          - high
+          - medium
+          - low
+        customer_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        customer_name:
+          type: string
+        source:
+          type: string
+        source_date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+    Pagination:
+      type: object
+      required:
+      - total
+      - limit
+      - offset
+      properties:
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
     Customer:
       type: object
       required:
@@ -500,107 +600,24 @@ components:
           type: string
           format: date-time
           example: '2026-06-10T09:00:00Z'
-    Pagination:
-      type: object
-      required:
-      - total
-      - limit
-      - offset
-      properties:
-        total:
-          type: integer
-          description: Total matching records (full set, not the page).
-          example: 508
-        limit:
-          type: integer
-          example: 50
-        offset:
-          type: integer
-          example: 0
-    FeatureDetail:
-      allOf:
-      - $ref: '#/components/schemas/Feature'
-      - type: object
-        properties:
-          insight_count:
-            type: integer
-            description: Distinct supporting insights across every area, counted from the feature's current evidence. This detail response is never scoped by `feature_area_id`, and it can differ from the same field on `GET /features` without a filter, which reports the stored rollup.
-          unique_customer_count:
-            type: integer
-            description: Distinct customers behind those insights, counted the same way as `insight_count` above.
-          deal_blocker_count:
-            type: integer
-            description: Distinct customers represented by deal-blocker evidence.
-          severity_breakdown:
-            type: object
-            example:
-              critical: 0
-              high: 3
-              medium: 7
-              low: 2
-          top_insights:
-            type: array
-            items:
-              $ref: '#/components/schemas/InsightSummary'
-          affected_customers:
-            type: array
-            items:
-              $ref: '#/components/schemas/Customer'
-    InsightSummary:
-      type: object
-      description: Compact insight evidence embedded in theme and feature detail responses.
-      required:
-      - id
-      - title
-      - severity
-      - source
-      - created_at
-      properties:
-        id:
-          type: string
-          format: uuid
-        title:
-          type: string
-        category:
-          type: string
-        severity:
-          type: string
-          enum:
-          - critical
-          - high
-          - medium
-          - low
-        customer_id:
-          type:
-          - string
-          - 'null'
-          format: uuid
-        customer_name:
-          type: string
-        source:
-          type: string
-        source_date:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-    Error:
-      type: object
-      required:
-      - error
-      - code
-      properties:
-        error:
-          type: string
-          description: User-safe message.
-        code:
-          type: string
-          example: INVALID_API_KEY
-        hint:
-          type: string
-          description: Optional next step.
   responses:
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
     NotFound:
       description: Resource not found (or not in your team)
       content:
@@ -610,6 +627,24 @@ components:
           example:
             error: Not found.
             code: NOT_FOUND
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
     Unauthorized:
       description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
 
@@ -635,41 +670,6 @@ components:
                 error: Invalid or inactive API key.
                 code: INVALID_API_KEY
                 hint: Create a key in Settings → API Keys.
-    AuthenticationUnavailable:
-      description: API-key authentication infrastructure is temporarily unavailable
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-            example: 10
-          description: Wait 10 seconds before retrying authentication.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            authentication:
-              summary: Authentication dependency failure
-              value:
-                error: API key authentication is temporarily unavailable. Please retry shortly.
-                code: API_KEY_AUTH_UNAVAILABLE
-    ValidationError:
-      description: Invalid query parameter, filter combination, or cursor
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            uuid:
-              summary: Invalid filter ID
-              value:
-                error: product_id must be a UUID.
-                code: VALIDATION_ERROR
-            cursor:
-              summary: Invalid cursor
-              value:
-                error: cursor is invalid or expired
-                code: VALIDATION_ERROR
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
