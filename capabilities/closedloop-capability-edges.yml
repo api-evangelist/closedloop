@@ -1,0 +1,54 @@
+slug: closedloop
+provider: ClosedLoop AI
+generated_by: planning/capability-mapping/scripts/classify_capabilities.py
+model: claude-opus-5
+frame:
+- Software & Technology
+min_confidence: 0.7
+capability_model:
+  source: https://github.com/vincentmakes/turbo-ea-capabilities
+  license: CC-BY-4.0
+  attribution: Turbo EA Capabilities by Vincent Verdet — Turbo EA, https://github.com/vincentmakes/turbo-ea-capabilities,
+    CC BY 4.0
+  notice: NOTICE
+edge_count: 4
+edges:
+- tag: Features
+  spec_file: closedloop-features-api-openapi.yml
+  capability_id: BC-4200.10
+  capability_id_l1: BC-4200
+  capability_name: Product Discovery & Backlog Management
+  confidence: 0.75
+  evidence: GET /features listFeatures List / search features; schemas FeatureDetail, InsightSummary —
+    'buildable features, and prioritized roadmap decisions'
+  reason: Features here are candidate buildable items derived from customer signals, i.e. product discovery
+    and backlog stewardship.
+- tag: Insights
+  spec_file: closedloop-insights-api-openapi.yml
+  capability_id: BC-4280.60
+  capability_id_l1: BC-4280
+  capability_name: Customer Insight Synthesis
+  confidence: 0.75
+  evidence: GET /insights listInsights List / search insights; schemas Insight, InsightDetail, ProductAssociation
+  reason: Structured insights extracted from customer conversations and feedback, associated to products
+    — synthesis of qualitative signals into product decisions.
+- tag: Themes
+  spec_file: closedloop-themes-api-openapi.yml
+  capability_id: BC-4280.60
+  capability_id_l1: BC-4280
+  capability_name: Customer Insight Synthesis
+  confidence: 0.75
+  evidence: GET /themes listThemes List / search themes; schemas ThemeDetail, InsightSummary, Feature
+    — "structured intelligence ClosedLoop AI extracts from customer conversations"
+  reason: Themes are synthesised product insights derived from customer conversations and feedback, feeding
+    product decisions — Customer Insight Synthesis. Alternative read (Product Discovery & Backlog) is
+    plausible, hence moderate confidence.
+- tag: Competitors
+  spec_file: closedloop-competitors-api-openapi.yml
+  capability_id: BC-400.30
+  capability_id_l1: BC-400
+  capability_name: Market Intelligence Management
+  confidence: 0.7
+  evidence: GET /competitors/mentions getCompetitorsMentions Search competitor mentions
+  reason: Cataloguing competitors and their mentions in customer conversations is competitive intelligence,
+    a Market Intelligence activity.

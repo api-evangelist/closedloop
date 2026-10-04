@@ -523,6 +523,9 @@ generated:
   confidence: 93
   at: '2026-08-30T13:57:07.826Z'
 common:
+- type: CapabilityMap
+  url: capabilities/closedloop-capability-edges.yml
+  name: ClosedLoop AI Business Capability Map
 - type: Overlay
   url: overlays/closedloop-public-api-overlay.yaml
 - type: Website
