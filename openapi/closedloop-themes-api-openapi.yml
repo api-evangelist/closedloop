@@ -261,235 +261,24 @@ paths:
         '503':
           $ref: '#/components/responses/AuthenticationUnavailable'
 components:
-  responses:
-    ValidationError:
-      description: Invalid query parameter, filter combination, or cursor
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            uuid:
-              summary: Invalid filter ID
-              value:
-                error: product_id must be a UUID.
-                code: VALIDATION_ERROR
-            cursor:
-              summary: Invalid cursor
-              value:
-                error: cursor is invalid or expired
-                code: VALIDATION_ERROR
-    AuthenticationUnavailable:
-      description: API-key authentication infrastructure is temporarily unavailable
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-            example: 10
-          description: Wait 10 seconds before retrying authentication.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            authentication:
-              summary: Authentication dependency failure
-              value:
-                error: API key authentication is temporarily unavailable. Please retry shortly.
-                code: API_KEY_AUTH_UNAVAILABLE
-    ThemesUnavailable:
-      description: API-key authentication or semantic theme search is temporarily unavailable
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-          examples:
-            authentication:
-              value: 10
-            semantic_search:
-              value: 5
-          description: Wait 10 seconds after an authentication failure, or 5 seconds after a semantic-search failure.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            authentication:
-              summary: Authentication dependency failure
-              value:
-                error: API key authentication is temporarily unavailable. Please retry shortly.
-                code: API_KEY_AUTH_UNAVAILABLE
-            semantic_search:
-              summary: Query embedding generation failed without allowed fallback
-              value:
-                error: Semantic search is temporarily unavailable.
-                code: SEMANTIC_SEARCH_UNAVAILABLE
-                hint: Retry the request, or set allow_fallback=true to permit lexical search.
-    ThemeRetired:
-      description: Theme was merged into another theme
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/RetiredTheme'
-          example:
-            error: Theme has been merged into another theme.
-            code: THEME_RETIRED
-            replacement_theme_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
-    RateLimited:
-      description: Semantic theme search rate or concurrency limit reached
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-            example: 1
-          description: Suggested delay in seconds before retrying.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error: Too many semantic search requests. Please retry shortly.
-            code: RATE_LIMIT_EXCEEDED
-    NotFound:
-      description: Resource not found (or not in your team)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error: Not found.
-            code: NOT_FOUND
-    Unauthorized:
-      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
-
-        header is absent, or `INVALID_API_KEY` when a key is present but invalid
-
-        or inactive.
-
-        '
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            missing:
-              summary: No key provided
-              value:
-                error: API key required.
-                code: NO_API_KEY
-                hint: Send your key in the X-API-Key header.
-            invalid:
-              summary: Key invalid or inactive
-              value:
-                error: Invalid or inactive API key.
-                code: INVALID_API_KEY
-                hint: Create a key in Settings → API Keys.
-  parameters:
-    ProductFeatureId:
-      name: product_feature_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one buildable product feature ID from `/features`.
-    ProductId:
-      name: product_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one product ID from `/products`.
-    Limit:
-      name: limit
-      in: query
-      schema:
-        type: integer
-        default: 50
-        minimum: 1
-        maximum: 200
-      description: Page size (max 200).
-    DateFrom:
-      name: date_from
-      in: query
-      schema:
-        type: string
-        format: date
-        pattern: ^\d{4}-\d{2}-\d{2}$
-      example: '2026-05-01'
-      description: 'Inclusive start date, as a real calendar date in `YYYY-MM-DD`.
-
-        Any other form is rejected with `400 VALIDATION_ERROR` - including
-
-        `2026-5-1`, `2026/05/01`, `May 1, 2026`, a bare `2026`, a date-time, and
-
-        impossible dates such as `2026-02-30`.
-
-        '
-    PathId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Resource UUID.
-    FeatureAreaId:
-      name: feature_area_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
-
-        area an insight is filed under; it is NOT a buildable feature ID from
-
-        `/features`, and the two are never interchangeable.
-
-        '
-    DateTo:
-      name: date_to
-      in: query
-      schema:
-        type: string
-        format: date
-        pattern: ^\d{4}-\d{2}-\d{2}$
-      example: '2026-05-31'
-      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
-
-        Validated by the same rule as `date_from`.
-
-        '
-    Offset:
-      name: offset
-      in: query
-      schema:
-        type: integer
-        default: 0
-        minimum: 0
-      description: Number of records to skip.
-    ProductAreaId:
-      name: product_area_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one parent product-area ID from `/areas`.
   schemas:
-    Error:
+    Pagination:
       type: object
       required:
-      - error
-      - code
+      - total
+      - limit
+      - offset
       properties:
-        error:
-          type: string
-          description: User-safe message.
-        code:
-          type: string
-          example: INVALID_API_KEY
-        hint:
-          type: string
-          description: Optional next step.
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
     InsightSummary:
       type: object
       description: Compact insight evidence embedded in theme and feature detail responses.
@@ -529,6 +318,73 @@ components:
         created_at:
           type: string
           format: date-time
+    Theme:
+      type: object
+      required:
+      - id
+      - title
+      - ric_score
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+          description: Immutable UUID; never reassigned to another theme.
+        replacement_theme_id:
+          type: string
+          format: uuid
+          description: Present only for a valid merged theme returned by a list request; points directly to the final surviving theme.
+        title:
+          type: string
+          example: Dark mode across the product
+        description:
+          type: string
+          example: Customers repeatedly ask for a dark theme for night-time and accessibility.
+        ric_score:
+          type: number
+          example: 7.8
+          description: Reach × Impact × Confidence.
+        reach:
+          type: number
+          example: 0.62
+        impact:
+          type: number
+          example: 0.8
+        confidence:
+          type: number
+          example: 0.9
+        insight_count:
+          type: integer
+          example: 34
+          description: Supporting insights across the theme.
+        unique_customer_count:
+          type: integer
+          example: 19
+        deal_blocker_count:
+          type: integer
+          example: 4
+          description: Distinct customers represented by deal-blocker evidence.
+        feature_count:
+          type: integer
+          example: 4
+          description: Buildable features under this theme.
+        status:
+          type: string
+          enum:
+          - active
+          - declined
+          - shipped
+          - parked
+          example: active
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-04-02T00:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2026-06-01T00:00:00Z'
     ThemeDetail:
       allOf:
       - $ref: '#/components/schemas/Theme'
@@ -616,108 +472,6 @@ components:
           type: string
           format: date-time
           example: '2026-06-10T09:00:00Z'
-    RetiredTheme:
-      type: object
-      required:
-      - error
-      - code
-      - replacement_theme_id
-      properties:
-        error:
-          type: string
-          example: Theme has been merged into another theme.
-        code:
-          type: string
-          enum:
-          - THEME_RETIRED
-        replacement_theme_id:
-          type: string
-          format: uuid
-          description: Immutable ID of the final surviving theme after following the merge chain.
-    Pagination:
-      type: object
-      required:
-      - total
-      - limit
-      - offset
-      properties:
-        total:
-          type: integer
-          description: Total matching records (full set, not the page).
-          example: 508
-        limit:
-          type: integer
-          example: 50
-        offset:
-          type: integer
-          example: 0
-    Theme:
-      type: object
-      required:
-      - id
-      - title
-      - ric_score
-      - status
-      properties:
-        id:
-          type: string
-          format: uuid
-          example: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
-          description: Immutable UUID; never reassigned to another theme.
-        replacement_theme_id:
-          type: string
-          format: uuid
-          description: Present only for a valid merged theme returned by a list request; points directly to the final surviving theme.
-        title:
-          type: string
-          example: Dark mode across the product
-        description:
-          type: string
-          example: Customers repeatedly ask for a dark theme for night-time and accessibility.
-        ric_score:
-          type: number
-          example: 7.8
-          description: Reach × Impact × Confidence.
-        reach:
-          type: number
-          example: 0.62
-        impact:
-          type: number
-          example: 0.8
-        confidence:
-          type: number
-          example: 0.9
-        insight_count:
-          type: integer
-          example: 34
-          description: Supporting insights across the theme.
-        unique_customer_count:
-          type: integer
-          example: 19
-        deal_blocker_count:
-          type: integer
-          example: 4
-          description: Distinct customers represented by deal-blocker evidence.
-        feature_count:
-          type: integer
-          example: 4
-          description: Buildable features under this theme.
-        status:
-          type: string
-          enum:
-          - active
-          - declined
-          - shipped
-          - parked
-          example: active
-        created_at:
-          type: string
-          format: date-time
-          example: '2026-04-02T00:00:00Z'
-        updated_at:
-          type: string
-          format: date-time
-          example: '2026-06-01T00:00:00Z'
     Feature:
       type: object
       required:
@@ -780,6 +534,252 @@ components:
           type: string
           format: date-time
           example: '2026-06-01T00:00:00Z'
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+    RetiredTheme:
+      type: object
+      required:
+      - error
+      - code
+      - replacement_theme_id
+      properties:
+        error:
+          type: string
+          example: Theme has been merged into another theme.
+        code:
+          type: string
+          enum:
+          - THEME_RETIRED
+        replacement_theme_id:
+          type: string
+          format: uuid
+          description: Immutable ID of the final surviving theme after following the merge chain.
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+      description: Page size (max 200).
+    FeatureAreaId:
+      name: feature_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
+
+        area an insight is filed under; it is NOT a buildable feature ID from
+
+        `/features`, and the two are never interchangeable.
+
+        '
+    DateFrom:
+      name: date_from
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-01'
+      description: 'Inclusive start date, as a real calendar date in `YYYY-MM-DD`.
+
+        Any other form is rejected with `400 VALIDATION_ERROR` - including
+
+        `2026-5-1`, `2026/05/01`, `May 1, 2026`, a bare `2026`, a date-time, and
+
+        impossible dates such as `2026-02-30`.
+
+        '
+    ProductFeatureId:
+      name: product_feature_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one buildable product feature ID from `/features`.
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-31'
+      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+
+        Validated by the same rule as `date_from`.
+
+        '
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource UUID.
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
+    ProductId:
+      name: product_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one product ID from `/products`.
+    ProductAreaId:
+      name: product_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one parent product-area ID from `/areas`.
+  responses:
+    ThemeRetired:
+      description: Theme was merged into another theme
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RetiredTheme'
+          example:
+            error: Theme has been merged into another theme.
+            code: THEME_RETIRED
+            replacement_theme_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+    NotFound:
+      description: Resource not found (or not in your team)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not found.
+            code: NOT_FOUND
+    RateLimited:
+      description: Semantic theme search rate or concurrency limit reached
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 1
+          description: Suggested delay in seconds before retrying.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Too many semantic search requests. Please retry shortly.
+            code: RATE_LIMIT_EXCEEDED
+    Unauthorized:
+      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
+
+        header is absent, or `INVALID_API_KEY` when a key is present but invalid
+
+        or inactive.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: No key provided
+              value:
+                error: API key required.
+                code: NO_API_KEY
+                hint: Send your key in the X-API-Key header.
+            invalid:
+              summary: Key invalid or inactive
+              value:
+                error: Invalid or inactive API key.
+                code: INVALID_API_KEY
+                hint: Create a key in Settings → API Keys.
+    ThemesUnavailable:
+      description: API-key authentication or semantic theme search is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          examples:
+            authentication:
+              value: 10
+            semantic_search:
+              value: 5
+          description: Wait 10 seconds after an authentication failure, or 5 seconds after a semantic-search failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+            semantic_search:
+              summary: Query embedding generation failed without allowed fallback
+              value:
+                error: Semantic search is temporarily unavailable.
+                code: SEMANTIC_SEARCH_UNAVAILABLE
+                hint: Retry the request, or set allow_fallback=true to permit lexical search.
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

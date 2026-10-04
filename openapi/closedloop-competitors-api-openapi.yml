@@ -133,76 +133,24 @@ paths:
       operationId: getCompetitorsMentions
       x-operation-id-source: derived
 components:
-  parameters:
-    Query:
-      name: q
-      in: query
-      schema:
-        type: string
-      description: Free-text search over titles and content.
-    Limit:
-      name: limit
-      in: query
-      schema:
-        type: integer
-        default: 50
-        minimum: 1
-        maximum: 200
-      description: Page size (max 200).
-    DateFrom:
-      name: date_from
-      in: query
-      schema:
-        type: string
-        format: date
-        pattern: ^\d{4}-\d{2}-\d{2}$
-      example: '2026-05-01'
-      description: 'Inclusive start date, as a real calendar date in `YYYY-MM-DD`.
-
-        Any other form is rejected with `400 VALIDATION_ERROR` - including
-
-        `2026-5-1`, `2026/05/01`, `May 1, 2026`, a bare `2026`, a date-time, and
-
-        impossible dates such as `2026-02-30`.
-
-        '
-    DateTo:
-      name: date_to
-      in: query
-      schema:
-        type: string
-        format: date
-        pattern: ^\d{4}-\d{2}-\d{2}$
-      example: '2026-05-31'
-      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
-
-        Validated by the same rule as `date_from`.
-
-        '
-    Offset:
-      name: offset
-      in: query
-      schema:
-        type: integer
-        default: 0
-        minimum: 0
-      description: Number of records to skip.
   schemas:
-    Error:
+    Pagination:
       type: object
       required:
-      - error
-      - code
+      - total
+      - limit
+      - offset
       properties:
-        error:
-          type: string
-          description: User-safe message.
-        code:
-          type: string
-          example: INVALID_API_KEY
-        hint:
-          type: string
-          description: Optional next step.
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
     CompetitorMention:
       type: object
       required:
@@ -255,23 +203,6 @@ components:
           type: string
           format: date-time
           example: '2026-05-20T14:00:00Z'
-    Pagination:
-      type: object
-      required:
-      - total
-      - limit
-      - offset
-      properties:
-        total:
-          type: integer
-          description: Total matching records (full set, not the page).
-          example: 508
-        limit:
-          type: integer
-          example: 50
-        offset:
-          type: integer
-          example: 0
     Competitor:
       type: object
       required:
@@ -324,6 +255,75 @@ components:
         summary:
           type: string
           example: Most-cited alternative on lost deals; wins on native reporting.
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+  parameters:
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-31'
+      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+
+        Validated by the same rule as `date_from`.
+
+        '
+    DateFrom:
+      name: date_from
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-01'
+      description: 'Inclusive start date, as a real calendar date in `YYYY-MM-DD`.
+
+        Any other form is rejected with `400 VALIDATION_ERROR` - including
+
+        `2026-5-1`, `2026/05/01`, `May 1, 2026`, a bare `2026`, a date-time, and
+
+        impossible dates such as `2026-02-30`.
+
+        '
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+      description: Page size (max 200).
+    Query:
+      name: q
+      in: query
+      schema:
+        type: string
+      description: Free-text search over titles and content.
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
   responses:
     AuthenticationUnavailable:
       description: API-key authentication infrastructure is temporarily unavailable

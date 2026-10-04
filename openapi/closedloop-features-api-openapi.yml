@@ -323,74 +323,77 @@ paths:
         '503':
           $ref: '#/components/responses/AuthenticationUnavailable'
 components:
-  parameters:
-    Query:
-      name: q
-      in: query
-      schema:
-        type: string
-      description: Free-text search over titles and content.
-    Limit:
-      name: limit
-      in: query
-      schema:
-        type: integer
-        default: 50
-        minimum: 1
-        maximum: 200
-      description: Page size (max 200).
-    PathId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Resource UUID.
-    FeatureAreaId:
-      name: feature_area_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
+  responses:
+    NotFound:
+      description: Resource not found (or not in your team)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not found.
+            code: NOT_FOUND
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
+    Unauthorized:
+      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
 
-        area an insight is filed under; it is NOT a buildable feature ID from
+        header is absent, or `INVALID_API_KEY` when a key is present but invalid
 
-        `/features`, and the two are never interchangeable.
+        or inactive.
 
         '
-    Offset:
-      name: offset
-      in: query
-      schema:
-        type: integer
-        default: 0
-        minimum: 0
-      description: Number of records to skip.
-    ProductId:
-      name: product_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one product ID from `/products`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: No key provided
+              value:
+                error: API key required.
+                code: NO_API_KEY
+                hint: Send your key in the X-API-Key header.
+            invalid:
+              summary: Key invalid or inactive
+              value:
+                error: Invalid or inactive API key.
+                code: INVALID_API_KEY
+                hint: Create a key in Settings → API Keys.
   schemas:
-    Error:
-      type: object
-      required:
-      - error
-      - code
-      properties:
-        error:
-          type: string
-          description: User-safe message.
-        code:
-          type: string
-          example: INVALID_API_KEY
-        hint:
-          type: string
-          description: Optional next step.
     FeatureDetail:
       allOf:
       - $ref: '#/components/schemas/Feature'
@@ -420,107 +423,6 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/Customer'
-    Feature:
-      type: object
-      required:
-      - id
-      - theme_id
-      - title
-      - ric_score
-      - status
-      properties:
-        id:
-          type: string
-          format: uuid
-          example: b2c3d4e5-f6a7-4b8c-9d0e-000000000002
-        theme_id:
-          type: string
-          format: uuid
-          example: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
-          description: The parent theme.
-        title:
-          type: string
-          example: Dark mode toggle in settings
-        description:
-          type: string
-          example: A user-controllable dark / light toggle in the settings panel.
-        ric_score:
-          type: number
-          example: 6.9
-        insight_count:
-          type: integer
-          example: 12
-          description: Supporting insights across every area. On `GET /features` with `feature_area_id`, this is instead recomputed from the insights in the selected area only. See `/features/{id}` for how the detail response derives it.
-        unique_customer_count:
-          type: integer
-          example: 9
-          description: Distinct customers behind those insights, scoped the same way as `insight_count`.
-        product_id:
-          type:
-          - string
-          - 'null'
-          format: uuid
-          description: Assigned product, if any.
-        product_name:
-          type:
-          - string
-          - 'null'
-          example: Core Platform
-        status:
-          type: string
-          enum:
-          - active
-          - declined
-          - shipped
-          - parked
-          example: active
-        created_at:
-          type: string
-          format: date-time
-          example: '2026-04-05T00:00:00Z'
-        updated_at:
-          type: string
-          format: date-time
-          example: '2026-06-01T00:00:00Z'
-    InsightSummary:
-      type: object
-      description: Compact insight evidence embedded in theme and feature detail responses.
-      required:
-      - id
-      - title
-      - severity
-      - source
-      - created_at
-      properties:
-        id:
-          type: string
-          format: uuid
-        title:
-          type: string
-        category:
-          type: string
-        severity:
-          type: string
-          enum:
-          - critical
-          - high
-          - medium
-          - low
-        customer_id:
-          type:
-          - string
-          - 'null'
-          format: uuid
-        customer_name:
-          type: string
-        source:
-          type: string
-        source_date:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
     Pagination:
       type: object
       required:
@@ -600,76 +502,174 @@ components:
           type: string
           format: date-time
           example: '2026-06-10T09:00:00Z'
-  responses:
-    ValidationError:
-      description: Invalid query parameter, filter combination, or cursor
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            uuid:
-              summary: Invalid filter ID
-              value:
-                error: product_id must be a UUID.
-                code: VALIDATION_ERROR
-            cursor:
-              summary: Invalid cursor
-              value:
-                error: cursor is invalid or expired
-                code: VALIDATION_ERROR
-    NotFound:
-      description: Resource not found (or not in your team)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error: Not found.
-            code: NOT_FOUND
-    AuthenticationUnavailable:
-      description: API-key authentication infrastructure is temporarily unavailable
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-            example: 10
-          description: Wait 10 seconds before retrying authentication.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            authentication:
-              summary: Authentication dependency failure
-              value:
-                error: API key authentication is temporarily unavailable. Please retry shortly.
-                code: API_KEY_AUTH_UNAVAILABLE
-    Unauthorized:
-      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
+    InsightSummary:
+      type: object
+      description: Compact insight evidence embedded in theme and feature detail responses.
+      required:
+      - id
+      - title
+      - severity
+      - source
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        category:
+          type: string
+        severity:
+          type: string
+          enum:
+          - critical
+          - high
+          - medium
+          - low
+        customer_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        customer_name:
+          type: string
+        source:
+          type: string
+        source_date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+    Feature:
+      type: object
+      required:
+      - id
+      - theme_id
+      - title
+      - ric_score
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: b2c3d4e5-f6a7-4b8c-9d0e-000000000002
+        theme_id:
+          type: string
+          format: uuid
+          example: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+          description: The parent theme.
+        title:
+          type: string
+          example: Dark mode toggle in settings
+        description:
+          type: string
+          example: A user-controllable dark / light toggle in the settings panel.
+        ric_score:
+          type: number
+          example: 6.9
+        insight_count:
+          type: integer
+          example: 12
+          description: Supporting insights across every area. On `GET /features` with `feature_area_id`, this is instead recomputed from the insights in the selected area only. See `/features/{id}` for how the detail response derives it.
+        unique_customer_count:
+          type: integer
+          example: 9
+          description: Distinct customers behind those insights, scoped the same way as `insight_count`.
+        product_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Assigned product, if any.
+        product_name:
+          type:
+          - string
+          - 'null'
+          example: Core Platform
+        status:
+          type: string
+          enum:
+          - active
+          - declined
+          - shipped
+          - parked
+          example: active
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-04-05T00:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2026-06-01T00:00:00Z'
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+      description: Page size (max 200).
+    Query:
+      name: q
+      in: query
+      schema:
+        type: string
+      description: Free-text search over titles and content.
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource UUID.
+    FeatureAreaId:
+      name: feature_area_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
 
-        header is absent, or `INVALID_API_KEY` when a key is present but invalid
+        area an insight is filed under; it is NOT a buildable feature ID from
 
-        or inactive.
+        `/features`, and the two are never interchangeable.
 
         '
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            missing:
-              summary: No key provided
-              value:
-                error: API key required.
-                code: NO_API_KEY
-                hint: Send your key in the X-API-Key header.
-            invalid:
-              summary: Key invalid or inactive
-              value:
-                error: Invalid or inactive API key.
-                code: INVALID_API_KEY
-                hint: Create a key in Settings → API Keys.
+    ProductId:
+      name: product_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one product ID from `/products`.
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

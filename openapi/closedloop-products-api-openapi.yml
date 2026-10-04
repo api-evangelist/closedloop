@@ -140,22 +140,51 @@ paths:
         '503':
           $ref: '#/components/responses/AuthenticationUnavailable'
 components:
+  responses:
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+    Unauthorized:
+      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
+
+        header is absent, or `INVALID_API_KEY` when a key is present but invalid
+
+        or inactive.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: No key provided
+              value:
+                error: API key required.
+                code: NO_API_KEY
+                hint: Send your key in the X-API-Key header.
+            invalid:
+              summary: Key invalid or inactive
+              value:
+                error: Invalid or inactive API key.
+                code: INVALID_API_KEY
+                hint: Create a key in Settings → API Keys.
   schemas:
-    Error:
-      type: object
-      required:
-      - error
-      - code
-      properties:
-        error:
-          type: string
-          description: User-safe message.
-        code:
-          type: string
-          example: INVALID_API_KEY
-        hint:
-          type: string
-          description: Optional next step.
     ProductArea:
       type: object
       required:
@@ -197,6 +226,57 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FeatureArea'
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
+    FeatureArea:
+      type: object
+      required:
+      - id
+      - name
+      - status
+      - sort_order
+      - insight_count
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Immutable feature-area UUID.
+        name:
+          type: string
+          example: Exports
+        description:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          example: active
+        sort_order:
+          type: integer
+          example: 0
+        insight_count:
+          type: integer
+          example: 84
+          description: All-time insights assigned directly to this feature area.
+        feedback_since:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Earliest feedback assigned to this feature area.
     Product:
       type: object
       required:
@@ -255,86 +335,6 @@ components:
         updated_at:
           type: string
           format: date-time
-    FeatureArea:
-      type: object
-      required:
-      - id
-      - name
-      - status
-      - sort_order
-      - insight_count
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Immutable feature-area UUID.
-        name:
-          type: string
-          example: Exports
-        description:
-          type:
-          - string
-          - 'null'
-        status:
-          type: string
-          example: active
-        sort_order:
-          type: integer
-          example: 0
-        insight_count:
-          type: integer
-          example: 84
-          description: All-time insights assigned directly to this feature area.
-        feedback_since:
-          type:
-          - string
-          - 'null'
-          format: date-time
-          description: Earliest feedback assigned to this feature area.
-  responses:
-    AuthenticationUnavailable:
-      description: API-key authentication infrastructure is temporarily unavailable
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-            example: 10
-          description: Wait 10 seconds before retrying authentication.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            authentication:
-              summary: Authentication dependency failure
-              value:
-                error: API key authentication is temporarily unavailable. Please retry shortly.
-                code: API_KEY_AUTH_UNAVAILABLE
-    Unauthorized:
-      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
-
-        header is absent, or `INVALID_API_KEY` when a key is present but invalid
-
-        or inactive.
-
-        '
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            missing:
-              summary: No key provided
-              value:
-                error: API key required.
-                code: NO_API_KEY
-                hint: Send your key in the X-API-Key header.
-            invalid:
-              summary: Key invalid or inactive
-              value:
-                error: Invalid or inactive API key.
-                code: INVALID_API_KEY
-                hint: Create a key in Settings → API Keys.
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
