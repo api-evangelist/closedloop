@@ -1,0 +1,12 @@
+{
+ "url": "https://closedloop.sh/docs/api-reference/openapi.yaml",
+ "requested_url": "https://closedloop.sh/api-reference/openapi.yaml",
+ "status": 200,
+ "content_type": "text/yaml",
+ "bytes": 85430,
+ "sha256": "1d47923fde7028cb04e36be1dba5bb3bc53ba7bfb2de81ecf1fb44dac5838e59",
+ "fetched_at": "2026-10-04",
+ "fetched_by": "APIEvangelist-Harvest/1.0 (+https://apievangelist.com)",
+ "match": "equivalent",
+ "note": "Re-fetched from the provider by verify-openapi-sources.py; the provider's current document describes the same operations (Jaccard 1.0), but the bytes differ, so the archive is an earlier or reformatted copy."
+}
