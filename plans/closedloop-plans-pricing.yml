@@ -116,3 +116,31 @@ free_trial: not-applicable
 free_trial_note: No trial -- the Free plan is permanent rather than time-limited.
 signup: https://app.closedloop.sh/signup
 contact_sales: https://closedloop.sh/contact
+x-canonical:
+  generated: '2026-10-08'
+  vocabulary: all/0-working/economics/plans-canonical.yml
+  models:
+  - metered
+  units: []
+  plans:
+  - name: Free
+    access: other
+    model: metered
+    model_how: derived
+    units: []
+    periods:
+    - month
+  - name: Pay as you go
+    access: other
+    model: metered
+    model_how: derived
+    units: []
+    periods:
+    - month
+  - name: Enterprise
+    access: other
+    model: metered
+    model_how: derived
+    units: []
+    periods:
+    - month

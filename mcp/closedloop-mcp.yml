@@ -375,3 +375,19 @@ clients_documented:
 - Cursor
 - LiteLLM
 - any MCP HTTP client with OAuth 2.1
+rfc9728:
+  endpoint: https://mcp.closedloop.sh
+  metadata_url: https://mcp.closedloop.sh/.well-known/oauth-protected-resource
+  discovered_via: WWW-Authenticate resource_metadata on an anonymous POST initialize
+  fetched: '2026-09-25'
+  http_status: 200
+  content_type: application/json
+  document:
+    resource: https://mcp.closedloop.sh
+    authorization_servers:
+    - https://mcp.closedloop.sh
+    scopes_supported:
+    - mcp:tools
+    - mcp:read
+    bearer_methods_supported:
+    - header
