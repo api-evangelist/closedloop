@@ -214,23 +214,38 @@ paths:
           $ref: '#/components/responses/AuthenticationUnavailable'
 components:
   schemas:
-    Pagination:
-      type: object
-      required:
-      - total
-      - limit
-      - offset
-      properties:
-        total:
-          type: integer
-          description: Total matching records (full set, not the page).
-          example: 508
-        limit:
-          type: integer
-          example: 50
-        offset:
-          type: integer
-          example: 0
+    InsightDetail:
+      allOf:
+      - $ref: '#/components/schemas/Insight'
+      - type: object
+        properties:
+          content:
+            type: string
+            description: Insight content (always English).
+            example: The customer wants a dark mode option for night-time use.
+          quote:
+            type: string
+            description: Verbatim supporting quote.
+            example: I'd honestly pay more if you just had a dark theme.
+          pain_point:
+            type: string
+            example: Bright interface is hard to use in low light.
+          workaround:
+            type: string
+            example: Uses a browser dark-mode extension.
+          competitor_gap:
+            type: string
+            example: Competitor X ships native dark mode.
+          willingness_to_pay:
+            type: string
+            example: High
+          feature_area:
+            type: string
+            example: UI/UX
+          source_url:
+            type: string
+            format: uri
+            example: https://gong.io/calls/abc123
     ProductAssociation:
       type: object
       required:
@@ -252,6 +267,47 @@ components:
           - active
           - retired
           example: active
+    CursorPagination:
+      type: object
+      required:
+      - limit
+      - has_more
+      - next_cursor
+      - sync_until
+      properties:
+        limit:
+          type: integer
+          example: 200
+        has_more:
+          type: boolean
+          example: true
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          description: Opaque cursor for the next page; null on the final page.
+        sync_until:
+          type: string
+          format: date-time
+          example: '2026-05-14T10:30:00.123456Z'
+          description: Fixed upper watermark. Commit it as the next checkpoint only after the final page.
+    Pagination:
+      type: object
+      required:
+      - total
+      - limit
+      - offset
+      properties:
+        total:
+          type: integer
+          description: Total matching records (full set, not the page).
+          example: 508
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
     ProductFeatureAssociation:
       type: object
       required:
@@ -272,6 +328,21 @@ components:
           - 'null'
           format: uuid
           description: Associated product UUID, or null when the feature is not assigned to a product.
+    Error:
+      type: object
+      required:
+      - error
+      - code
+      properties:
+        error:
+          type: string
+          description: User-safe message.
+        code:
+          type: string
+          example: INVALID_API_KEY
+        hint:
+          type: string
+          description: Optional next step.
     Insight:
       type: object
       required:
@@ -367,78 +438,28 @@ components:
             '
           items:
             $ref: '#/components/schemas/ProductFeatureAssociation'
-    CursorPagination:
-      type: object
-      required:
-      - limit
-      - has_more
-      - next_cursor
-      - sync_until
-      properties:
-        limit:
-          type: integer
-          example: 200
-        has_more:
-          type: boolean
-          example: true
-        next_cursor:
-          type:
-          - string
-          - 'null'
-          description: Opaque cursor for the next page; null on the final page.
-        sync_until:
-          type: string
-          format: date-time
-          example: '2026-05-14T10:30:00.123456Z'
-          description: Fixed upper watermark. Commit it as the next checkpoint only after the final page.
-    InsightDetail:
-      allOf:
-      - $ref: '#/components/schemas/Insight'
-      - type: object
-        properties:
-          content:
-            type: string
-            description: Insight content (always English).
-            example: The customer wants a dark mode option for night-time use.
-          quote:
-            type: string
-            description: Verbatim supporting quote.
-            example: I'd honestly pay more if you just had a dark theme.
-          pain_point:
-            type: string
-            example: Bright interface is hard to use in low light.
-          workaround:
-            type: string
-            example: Uses a browser dark-mode extension.
-          competitor_gap:
-            type: string
-            example: Competitor X ships native dark mode.
-          willingness_to_pay:
-            type: string
-            example: High
-          feature_area:
-            type: string
-            example: UI/UX
-          source_url:
-            type: string
-            format: uri
-            example: https://gong.io/calls/abc123
-    Error:
-      type: object
-      required:
-      - error
-      - code
-      properties:
-        error:
-          type: string
-          description: User-safe message.
-        code:
-          type: string
-          example: INVALID_API_KEY
-        hint:
-          type: string
-          description: Optional next step.
   parameters:
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+        pattern: ^\d{4}-\d{2}-\d{2}$
+      example: '2026-05-31'
+      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+
+        Validated by the same rule as `date_from`.
+
+        '
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Resource UUID.
     Limit:
       name: limit
       in: query
@@ -448,19 +469,27 @@ components:
         minimum: 1
         maximum: 200
       description: Page size (max 200).
-    FeatureAreaId:
-      name: feature_area_id
+    Query:
+      name: q
+      in: query
+      schema:
+        type: string
+      description: Free-text search over titles and content.
+    ProductId:
+      name: product_id
       in: query
       schema:
         type: string
         format: uuid
-      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
-
-        area an insight is filed under; it is NOT a buildable feature ID from
-
-        `/features`, and the two are never interchangeable.
-
-        '
+      description: Filter by one product ID from `/products`.
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
     DateFrom:
       name: date_from
       in: query
@@ -478,55 +507,19 @@ components:
         impossible dates such as `2026-02-30`.
 
         '
-    ProductFeatureId:
-      name: product_feature_id
+    FeatureAreaId:
+      name: feature_area_id
       in: query
       schema:
         type: string
         format: uuid
-      description: Filter by one buildable product feature ID from `/features`.
-    DateTo:
-      name: date_to
-      in: query
-      schema:
-        type: string
-        format: date
-        pattern: ^\d{4}-\d{2}-\d{2}$
-      example: '2026-05-31'
-      description: 'Inclusive end date, as a real calendar date in `YYYY-MM-DD`.
+      description: 'Filter by one child feature-area ID from `/areas`. A feature area is the subject
 
-        Validated by the same rule as `date_from`.
+        area an insight is filed under; it is NOT a buildable feature ID from
+
+        `/features`, and the two are never interchangeable.
 
         '
-    Query:
-      name: q
-      in: query
-      schema:
-        type: string
-      description: Free-text search over titles and content.
-    PathId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Resource UUID.
-    Offset:
-      name: offset
-      in: query
-      schema:
-        type: integer
-        default: 0
-        minimum: 0
-      description: Number of records to skip.
-    ProductId:
-      name: product_id
-      in: query
-      schema:
-        type: string
-        format: uuid
-      description: Filter by one product ID from `/products`.
     ProductAreaId:
       name: product_area_id
       in: query
@@ -534,76 +527,14 @@ components:
         type: string
         format: uuid
       description: Filter by one parent product-area ID from `/areas`.
+    ProductFeatureId:
+      name: product_feature_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by one buildable product feature ID from `/features`.
   responses:
-    NotFound:
-      description: Resource not found (or not in your team)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error: Not found.
-            code: NOT_FOUND
-    Unauthorized:
-      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
-
-        header is absent, or `INVALID_API_KEY` when a key is present but invalid
-
-        or inactive.
-
-        '
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            missing:
-              summary: No key provided
-              value:
-                error: API key required.
-                code: NO_API_KEY
-                hint: Send your key in the X-API-Key header.
-            invalid:
-              summary: Key invalid or inactive
-              value:
-                error: Invalid or inactive API key.
-                code: INVALID_API_KEY
-                hint: Create a key in Settings → API Keys.
-    AuthenticationUnavailable:
-      description: API-key authentication infrastructure is temporarily unavailable
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-            example: 10
-          description: Wait 10 seconds before retrying authentication.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            authentication:
-              summary: Authentication dependency failure
-              value:
-                error: API key authentication is temporarily unavailable. Please retry shortly.
-                code: API_KEY_AUTH_UNAVAILABLE
-    ValidationError:
-      description: Invalid query parameter, filter combination, or cursor
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            uuid:
-              summary: Invalid filter ID
-              value:
-                error: product_id must be a UUID.
-                code: VALIDATION_ERROR
-            cursor:
-              summary: Invalid cursor
-              value:
-                error: cursor is invalid or expired
-                code: VALIDATION_ERROR
     InsightsUnavailable:
       description: API-key authentication or incremental insight export is temporarily unavailable
       headers:
@@ -632,6 +563,75 @@ components:
                 error: Incremental export is temporarily unavailable.
                 code: EXPORT_UNAVAILABLE
                 hint: Retry the request in a few seconds.
+    Unauthorized:
+      description: 'Missing or invalid API key. `code` is `NO_API_KEY` when the `X-API-Key`
+
+        header is absent, or `INVALID_API_KEY` when a key is present but invalid
+
+        or inactive.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: No key provided
+              value:
+                error: API key required.
+                code: NO_API_KEY
+                hint: Send your key in the X-API-Key header.
+            invalid:
+              summary: Key invalid or inactive
+              value:
+                error: Invalid or inactive API key.
+                code: INVALID_API_KEY
+                hint: Create a key in Settings → API Keys.
+    ValidationError:
+      description: Invalid query parameter, filter combination, or cursor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            uuid:
+              summary: Invalid filter ID
+              value:
+                error: product_id must be a UUID.
+                code: VALIDATION_ERROR
+            cursor:
+              summary: Invalid cursor
+              value:
+                error: cursor is invalid or expired
+                code: VALIDATION_ERROR
+    AuthenticationUnavailable:
+      description: API-key authentication infrastructure is temporarily unavailable
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 10
+          description: Wait 10 seconds before retrying authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            authentication:
+              summary: Authentication dependency failure
+              value:
+                error: API key authentication is temporarily unavailable. Please retry shortly.
+                code: API_KEY_AUTH_UNAVAILABLE
+    NotFound:
+      description: Resource not found (or not in your team)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not found.
+            code: NOT_FOUND
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

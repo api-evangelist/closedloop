@@ -123,6 +123,23 @@ components:
           type: string
           description: Optional next step.
   parameters:
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+      description: Page size (max 200).
     DateTo:
       name: date_to
       in: query
@@ -136,15 +153,6 @@ components:
         Validated by the same rule as `date_from`.
 
         '
-    Limit:
-      name: limit
-      in: query
-      schema:
-        type: integer
-        default: 50
-        minimum: 1
-        maximum: 200
-      description: Page size (max 200).
     DateFrom:
       name: date_from
       in: query
@@ -162,14 +170,6 @@ components:
         impossible dates such as `2026-02-30`.
 
         '
-    Offset:
-      name: offset
-      in: query
-      schema:
-        type: integer
-        default: 0
-        minimum: 0
-      description: Number of records to skip.
   responses:
     AuthenticationUnavailable:
       description: API-key authentication infrastructure is temporarily unavailable

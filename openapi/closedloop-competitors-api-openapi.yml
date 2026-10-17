@@ -151,58 +151,6 @@ components:
         offset:
           type: integer
           example: 0
-    CompetitorMention:
-      type: object
-      required:
-      - id
-      - competitor_id
-      - mentioned_at
-      properties:
-        id:
-          type: string
-          format: uuid
-          example: 51617100-0000-4000-8000-000000000009
-        competitor_id:
-          type: string
-          format: uuid
-          example: 0e11e100-0000-4000-8000-000000000001
-          description: The FIRST competitor named. Read `competitors` when a mention names more than one.
-        competitor_name:
-          type: string
-          example: Competitor X
-        competitors:
-          type: array
-          description: Every competitor this mention names, in the order the customer said them. A single mention often compares several.
-          items:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                example: 0e11e100-0000-4000-8000-000000000001
-              name:
-                type: string
-                example: Competitor X
-        customer_id:
-          type:
-          - string
-          - 'null'
-          format: uuid
-          example: c0ffee00-0000-4000-8000-000000000001
-        customer_name:
-          type: string
-          example: Acme Co
-        quote:
-          type: string
-          description: Verbatim mention.
-          example: We're also trialing Competitor X because their reporting is faster.
-        source:
-          type: string
-          example: gong_call_def456
-        mentioned_at:
-          type: string
-          format: date-time
-          example: '2026-05-20T14:00:00Z'
     Competitor:
       type: object
       required:
@@ -255,6 +203,58 @@ components:
         summary:
           type: string
           example: Most-cited alternative on lost deals; wins on native reporting.
+    CompetitorMention:
+      type: object
+      required:
+      - id
+      - competitor_id
+      - mentioned_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 51617100-0000-4000-8000-000000000009
+        competitor_id:
+          type: string
+          format: uuid
+          example: 0e11e100-0000-4000-8000-000000000001
+          description: The FIRST competitor named. Read `competitors` when a mention names more than one.
+        competitor_name:
+          type: string
+          example: Competitor X
+        competitors:
+          type: array
+          description: Every competitor this mention names, in the order the customer said them. A single mention often compares several.
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: 0e11e100-0000-4000-8000-000000000001
+              name:
+                type: string
+                example: Competitor X
+        customer_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          example: c0ffee00-0000-4000-8000-000000000001
+        customer_name:
+          type: string
+          example: Acme Co
+        quote:
+          type: string
+          description: Verbatim mention.
+          example: We're also trialing Competitor X because their reporting is faster.
+        source:
+          type: string
+          example: gong_call_def456
+        mentioned_at:
+          type: string
+          format: date-time
+          example: '2026-05-20T14:00:00Z'
     Error:
       type: object
       required:
@@ -271,6 +271,23 @@ components:
           type: string
           description: Optional next step.
   parameters:
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Number of records to skip.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+      description: Page size (max 200).
     DateTo:
       name: date_to
       in: query
@@ -284,6 +301,12 @@ components:
         Validated by the same rule as `date_from`.
 
         '
+    Query:
+      name: q
+      in: query
+      schema:
+        type: string
+      description: Free-text search over titles and content.
     DateFrom:
       name: date_from
       in: query
@@ -301,29 +324,6 @@ components:
         impossible dates such as `2026-02-30`.
 
         '
-    Limit:
-      name: limit
-      in: query
-      schema:
-        type: integer
-        default: 50
-        minimum: 1
-        maximum: 200
-      description: Page size (max 200).
-    Query:
-      name: q
-      in: query
-      schema:
-        type: string
-      description: Free-text search over titles and content.
-    Offset:
-      name: offset
-      in: query
-      schema:
-        type: integer
-        default: 0
-        minimum: 0
-      description: Number of records to skip.
   responses:
     AuthenticationUnavailable:
       description: API-key authentication infrastructure is temporarily unavailable
