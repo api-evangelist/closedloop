@@ -4,18 +4,18 @@ checked:
 - https://a2aregistry.org/api/agents
 - https://api.nuget.org/v3
 - https://azuremarketplace.microsoft.com/
-- https://cdn.winget.microsoft.com/cache
 - https://crates.io/api/v1
-- https://formulae.brew.sh/api/cask.json
-- https://formulae.brew.sh/api/formula.json
-- https://github.com/ScoopInstaller/Extras
-- https://github.com/ScoopInstaller/Main
 - https://proxy.golang.org
 - https://pypi.org/pypi
 - https://registry.npmjs.org
 - https://repo1.maven.org/maven2
 - https://rubygems.org/api/v1
 - https://zapier.com/api/v4/apps/
+- https://cdn.winget.microsoft.com/cache
+- https://formulae.brew.sh/api/cask.json
+- https://formulae.brew.sh/api/formula.json
+- https://github.com/ScoopInstaller/Extras
+- https://github.com/ScoopInstaller/Main
 marketplace_apps: []
 edges:
 - partner_name: Microsoft Azure Marketplace
@@ -88,36 +88,6 @@ edges:
     detected: '2026-10-18'
   detected_by: sweep-official-sdks.py
   first_seen: '2026-10-18'
-- partner_name: npm registry
-  partner: npm
-  partner_match: register
-  type: register
-  direction: provider-built
-  category: official CLI (npm registry)
-  evidence: https://www.npmjs.com/package/@closedloop-ai/cli
-  channel: package-registry
-  relationship: distribution-channel
-  contract_reference:
-    register: npm registry (public package index)
-    spec_file: null
-    packages:
-    - name: '@closedloop-ai/cli'
-      version: 0.2.4
-      released: '2025-10-17'
-      released_field: modified
-      lapsed: false
-      page: https://www.npmjs.com/package/@closedloop-ai/cli
-      cli: bin cl
-      repo_leg: github-org:closed-loop-ai
-      publisher_leg: email:closedloop.sh
-      matched_by: domain
-    current: true
-    signal_note: 'the provider''s own command-line tool on a package manager: distribution, not an integration;
-      lapsed = no release in 24 months or deprecated / disabled by the manager'
-    detected_by: sweep-official-clis.py
-    detected: '2026-10-20'
-  detected_by: sweep-official-clis.py
-  first_seen: '2026-10-20'
 - partner_name: A2A protocol (own Agent Card)
   partner: null
   partner_match: register
@@ -148,8 +118,38 @@ edges:
     matched_domain: closedloop.sh
     matched_by: own-domain
     detected_by: sweep-ai-agents.py
-    detected: '2026-10-15'
+    detected: '2026-10-19'
   detected_by: sweep-ai-agents.py
   first_seen: '2026-10-15'
+- partner_name: npm registry
+  partner: npm
+  partner_match: register
+  type: register
+  direction: provider-built
+  category: official CLI (npm registry)
+  evidence: https://www.npmjs.com/package/@closedloop-ai/cli
+  channel: package-registry
+  relationship: distribution-channel
+  contract_reference:
+    register: npm registry (public package index)
+    spec_file: null
+    packages:
+    - name: '@closedloop-ai/cli'
+      version: 0.2.4
+      released: '2025-10-17'
+      released_field: modified
+      lapsed: false
+      page: https://www.npmjs.com/package/@closedloop-ai/cli
+      cli: bin cl
+      repo_leg: github-org:closed-loop-ai
+      publisher_leg: email:closedloop.sh
+      matched_by: domain
+    current: true
+    signal_note: 'the provider''s own command-line tool on a package manager: distribution, not an integration;
+      lapsed = no release in 24 months or deprecated / disabled by the manager'
+    detected_by: sweep-official-clis.py
+    detected: '2026-10-20'
+  detected_by: sweep-official-clis.py
+  first_seen: '2026-10-20'
 source:
 - https://a2aregistry.org/api/agents
