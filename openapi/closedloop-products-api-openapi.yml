@@ -369,3 +369,9 @@ x-tagGroups:
 - name: Meta
   tags:
   - Meta
+x-provenance:
+  method: harvested
+  publisher: ClosedLoop AI
+  source: https://closedloop.sh/docs/api-reference/openapi.yaml
+  note: split by refine-openapis from the provider's own published document, verified by fetch (openapi/_original/*.fetch.json);
+    stamped by stamp-openapi-provenance.py (roadmap#793)
