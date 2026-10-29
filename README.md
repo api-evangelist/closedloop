@@ -1,4 +1,4 @@
-# closedloop-ai-api
+# ClosedLoop AI
 
 <!-- API-EVANGELIST-PROVENANCE:BEGIN -->
 > ### About this repository
@@ -64,4 +64,145 @@
 > Full detail: **[Where this data comes from](https://apievangelist.com/about/where-our-data-comes-from)**
 <!-- API-EVANGELIST-PROVENANCE:END -->
 
-Product-intelligence platform that turns customer conversations and feedback (Gong, Fireflies, Slack, Zendesk, Intercom, Salesforce, HubSpot, surveys, product usage; 40+ integrations) into structured, source-traceable product insights, themes, buildable features, and prioritized roadmap decisions. E
+Product-intelligence platform that turns customer conversations and feedback (Gong, Fireflies, Slack, Zendesk, Intercom, Salesforce, HubSpot, surveys, product usage; 40+ integrations) into structured, source-traceable product insights, themes, buildable features, and prioritized roadmap decisions. Exposes a read-only /v1 REST API, a hosted MCP server, an llms.txt index, and published Claude Code skills.
+
+**Areas:** Product Intelligence · Customer Feedback · Voice of Customer · Product Management · AI Agents · MCP · SaaS analytics · A2A · SCIM · Product Discovery
+
+## ClosedLoop AI on APIs.io
+
+Everything profiled for ClosedLoop AI is published on APIs.io rather than in this repository. Start at the provider page — **[apis.io/providers/closedloop/](https://apis.io/providers/closedloop/)** — or go straight to one of the APIs or properties below.
+
+### APIs (13)
+
+- [ClosedLoop AI MCP Server](https://apis.io/apis/closedloop/closedloop-ai-mcp-server/) — Hosted, first-class MCP server over HTTP with OAuth auth (interactive auto-registration or client_credentials for M2M). Ships MCP tools (query insights,…
+- [ClosedLoop AI Claude Code Skills](https://apis.io/apis/closedloop/closedloop-ai-claude-code-skills/) — Set of ~25 pre-built Claude Code skills distributed as the 'closedloop-skills' plugin via the Anthropic community marketplace, grouped by team…
+- [ClosedLoop AI Analytics API](https://apis.io/apis/closedloop/closedloop-analytics-api/) — Trends, cohorts and facet counts over the full dataset.
+- [ClosedLoop AI Competitors API](https://apis.io/apis/closedloop/closedloop-competitors-api/) — Competitive pressure derived from your customers' own words. Competitors with a **mention trend over time** (not a static total), and a searchable feed of…
+- [ClosedLoop AI Context API](https://apis.io/apis/closedloop/closedloop-context-api/) — **Customer context**, the strategic intelligence behind your customers: churn reasons, competitive mentions, satisfaction, pricing perception and more,…
+- [ClosedLoop AI Customers API](https://apis.io/apis/closedloop/closedloop-customers-api/) — The people and accounts who gave feedback, with CRM context.
+- [ClosedLoop AI Features API](https://apis.io/apis/closedloop/closedloop-features-api/) — **Features**: the buildable, shippable children of a theme. Filter by `theme_id`. Same theme → features hierarchy you see on the roadmap.
+- [ClosedLoop AI Insights API](https://apis.io/apis/closedloop/closedloop-insights-api/) — Individual **product insights**: structured, AI-processed feedback items (pain point, severity, workaround, competitor gap, evidence).
+- [ClosedLoop AI Integrations API](https://apis.io/apis/closedloop/closedloop-integrations-api/) — Connected data sources for your team.
+- [ClosedLoop AI Meta API](https://apis.io/apis/closedloop/closedloop-meta-api/) — Service metadata.
+- [ClosedLoop AI Products API](https://apis.io/apis/closedloop/closedloop-products-api/) — The current product, product-area, and feature-area vocabulary for the team.
+- [ClosedLoop AI Themes API](https://apis.io/apis/closedloop/closedloop-themes-api/) — **Themes**: top-level problem clusters of related insights, RIC-scored. The "what should we build?" surface. Each theme rolls up one or more buildable features.
+- [ClosedLoop AI Usage API](https://apis.io/apis/closedloop/closedloop-usage-api/) — Credit consumption and usage records for billing transparency.
+
+### Published properties
+
+Each property below is a page on APIs.io carrying the machine-readable artifact and what it says.
+
+#### AsyncAPI (1)
+
+Event-driven and webhook contracts.
+
+- [Closedloop Webhooks](https://apis.io/asyncapis/closedloop/closedloop-webhooks/)
+
+#### MCP servers (2)
+
+Model Context Protocol servers that expose the API to agents.
+
+- [ClosedLoop AI MCP Server](https://apis.io/servers/closedloop/closedloop-ai-mcp-server/)
+- [https://eu.mcp.closedloop.sh](https://apis.io/servers/closedloop/https-eu-mcp-closedloop-sh/)
+
+#### Overlays (1)
+
+OpenAPI overlays, including conversational phrasing for each operation.
+
+- [Closedloop Public Api Overlay](https://apis.io/overlays/closedloop/closedloop-public-api-overlay/)
+
+#### Security (3)
+
+Authentication, trust centre, and vulnerability disclosure.
+
+- [Closedloop Authentication](https://apis.io/security/closedloop/closedloop-authentication/)
+- [Closedloop Domain Security](https://apis.io/security/closedloop/closedloop-domain-security/)
+- [Closedloop Trust Center](https://apis.io/security/closedloop/closedloop-trust-center/)
+
+#### OAuth scopes (1)
+
+The permissions the API asks for.
+
+- [Closedloop Scopes](https://apis.io/scopes/closedloop/closedloop-scopes/)
+
+#### Plans and pricing (1)
+
+Published plans, tiers and prices.
+
+- [Closedloop Plans Pricing](https://apis.io/plans/closedloop/closedloop-plans-pricing/)
+
+#### Rate limits (1)
+
+Published request limits.
+
+- [Closedloop Rate Limits](https://apis.io/rate-limits/closedloop/closedloop-rate-limits/)
+
+## Where to find this API
+
+Links to the company's own pages. This repository publishes no copy of their specifications — the canonical document is theirs and lives at the URLs below.
+
+- [Website](https://www.closedloop.sh/)
+- [Documentation](https://closedloop.sh/docs)
+- [API reference](https://closedloop.sh/docs/api-reference/introduction)
+- [Pricing](https://closedloop.sh/pricing)
+- [Sign up](https://app.closedloop.sh/signup)
+- [Support](https://closedloop.sh/contact)
+- [Blog](https://closedloop.sh/blog)
+- [Terms of service](https://closedloop.sh/terms)
+- [Privacy policy](https://closedloop.sh/privacy)
+- [GitHub](https://github.com/closed-loop-ai)
+
+## API Evangelist rating
+
+**Kin Score 63.0** — strong · rubric 0.25.0 · scored 2026-10-23
+
+| Facet | Score |
+|---|---|
+| Discoverability | 75.0 |
+| Contract quality | 60.1 |
+| Contract governance | 18.2 |
+| Operational transparency | 31.6 |
+| Developer ergonomics | 67.5 |
+| Access clarity | 85.5 |
+
+**Agent readiness 73.8** — agent-native
+
+| Agent-readiness dimension | Result |
+|---|---|
+| Spec Presence | yes |
+| Agentic Access | — |
+| Reversibility Documented | na |
+| MCP Server | verified |
+| Auth Clarity | served (partial credit) |
+| Idempotency | na |
+| Error Semantics | documented (partial credit) |
+| OpenAPI Examples | partial |
+| Rate Limit Signal | verified |
+| Event Surface Described | yes |
+| Agent Skills | unknown |
+| Well Known Catalog | — |
+| Consent Identity | — |
+| Agent Card | conformant |
+| Dry Run Mode | na |
+| Delegated Identity | served (partial credit) |
+| Protected Resource Metadata | verified |
+| Dynamic Client Registration | yes |
+| Agentic Commerce | — |
+| Pagination Ratio | partial |
+| Operation Distinctiveness | distinct |
+
+**Regulatory alignment 39.2** — Horizontal (data, software, accessibility, platform)
+
+The rubric is published at [github.com/api-evangelist/kin-score](https://github.com/api-evangelist/kin-score). The per-check breakdown behind these numbers — which checks were earned, partial or missed — along with score history and how this provider compares to its peers, is available at [apis.io/providers/closedloop/](https://apis.io/providers/closedloop/).
+
+## How this profile is made
+
+API Evangelist profiles a company's public API surface the way a developer would find it: the website, developer portal and documentation, the specifications it publishes, its public repositories, and its pricing, status and changelog pages. From that it derives the properties above — contracts split per API, workflows, schemas, collections, governance rules, plans and rate limits — and scores them against the published [Kin Score rubric](https://github.com/api-evangelist/kin-score).
+
+The artifacts are published on [APIs.io](https://apis.io), not in this repository. This repository is the public record for ClosedLoop AI: the place to say something is wrong, missing or out of date, and to ask for a re-score or a removal.
+
+## Open an issue
+
+- **Something about this listing** — a wrong description, a missing API, a stale artifact or a question about the rating: [open an issue on this repository](https://github.com/api-evangelist/closedloop/issues/new).
+- **A new API, or one that is not in the catalog yet** — [submit it on APIs.io](https://apis.io/add/).
+- **Anything else** — [the APIs.io inbox](https://github.com/api-search/inbox/issues/new) or [info@apievangelist.com](mailto:info@apievangelist.com).
